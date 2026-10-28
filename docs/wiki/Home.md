@@ -2,6 +2,13 @@
 
 Memory your coding agents share, and you can read, link and fix in Obsidian.
 
+[![PyPI](https://img.shields.io/pypi/v/agent-mem-vault)](https://pypi.org/project/agent-mem-vault/)
+[![GitHub release](https://img.shields.io/github/v/release/kursatdinc/agent-mem-vault)](https://github.com/kursatdinc/agent-mem-vault/releases/latest)
+
+```sh
+uvx agent-mem-vault
+```
+
 agent-mem-vault is an [MCP](https://modelcontextprotocol.io) server. Claude Code, Codex and any
 other MCP client use it to record decisions, risks, handoffs and project snapshots as Markdown notes
 in an [Obsidian](https://obsidian.md) vault, and to read them back in later sessions. You see the same

@@ -1,5 +1,10 @@
 # Getting Started
 
+agent-mem-vault is published on PyPI as
+[`agent-mem-vault`](https://pypi.org/project/agent-mem-vault/)
+[![PyPI](https://img.shields.io/pypi/v/agent-mem-vault)](https://pypi.org/project/agent-mem-vault/).
+`uvx agent-mem-vault` downloads and runs the latest release; no separate install step is needed.
+
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/), which provides `uvx`.
