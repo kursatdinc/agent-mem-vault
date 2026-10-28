@@ -1,10 +1,11 @@
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 
 from agent_vault_memory import git
+from agent_vault_memory.companion import CARD_FILES, OWNER_MARKER, Companion, card_relpath, read_card, render_card
 from agent_vault_memory.generated import DASHBOARD, DASHBOARD_RELPATH, hub_relpath, render_hub
 from agent_vault_memory.links import Links, link_report
 from agent_vault_memory.records import (
@@ -70,12 +71,14 @@ class Store:
         redact: bool = True,
         clock: Callable[[], datetime] = _now,
         git_autocommit: bool = False,
+        companion_max_chars: int | None = None,
     ) -> None:
         self.vault = vault
         self.default_namespace = default_namespace
         self.redact = redact
         self.clock = clock
         self.git_autocommit = git_autocommit
+        self.companion_max_chars = companion_max_chars
 
     # Writes
 
@@ -243,7 +246,41 @@ class Store:
             self._publish("update", updated)
             return updated
 
+    def update_companion(
+        self, namespace: str | None = None, last_session: str | None = None, threads: str | None = None
+    ) -> None:
+        """Replace the given companion cards of a namespace. Over the size cap nothing is written."""
+        limit = self._companion_limit()
+        if last_session is None and threads is None:
+            raise ValueError("nothing to update: pass last_session or threads")
+        safe_namespace = self._namespace(namespace)
+        texts = {}
+        for card, value in (("last_session", last_session), ("threads", threads)):
+            if value is None:
+                continue
+            text = self._redacted(sanitize_text(value, card, INPUT_LIMITS["content"]))
+            if len(text) > limit:
+                raise ValueError(
+                    f"{card} is {len(text)} characters, over the {limit} character limit: "
+                    "compact it and retry. Nothing was written."
+                )
+            texts[card] = text
+        with self.vault.lock():
+            updated = utc_timestamp(self.clock())
+            touched = []
+            for card, text in texts.items():
+                relpath = card_relpath(safe_namespace, card)
+                if self.vault.write_generated(relpath, render_card(safe_namespace, text, updated), OWNER_MARKER):
+                    touched.append(relpath)
+            if self.git_autocommit and touched:
+                git.autocommit(self.vault.root, touched, f"avm: update companion {namespace_slug(safe_namespace)}")
+
     # Reads
+
+    def get_companion(self, namespace: str | None = None) -> Companion:
+        self._companion_limit()
+        safe_namespace = self._namespace(namespace)
+        return Companion(*(read_card(self.vault, safe_namespace, card) for card in CARD_FILES))
 
     def get_links(self, id: str) -> tuple[Record, Links] | None:
         safe_id = sanitize_text(id, "id", INPUT_LIMITS["content"])
@@ -309,6 +346,15 @@ class Store:
 
     def get_project_brief(self, namespace: str | None = None, limit: float | None = None) -> Brief:
         safe_namespace = self._namespace(namespace)
+        brief = self._brief(safe_namespace, limit)
+        last_session = read_card(self.vault, safe_namespace, "last_session") if self.companion_max_chars else None
+        if last_session is None:
+            return brief
+        return replace(brief, content=f"{brief.content}\n\n## Last session\n{last_session}")
+
+    # Internals
+
+    def _brief(self, safe_namespace: str, limit: float | None) -> Brief:
         records = [
             record
             for record in self._select(safe_namespace, type="context")
@@ -325,7 +371,10 @@ class Store:
         )
         return Brief(f"Project brief for {safe_namespace}", safe_namespace, utc_timestamp(self.clock()), content)
 
-    # Internals
+    def _companion_limit(self) -> int:
+        if self.companion_max_chars is None:
+            raise VaultError("companion is disabled: set features.companion in the config")
+        return self.companion_max_chars
 
     def _namespace(self, namespace: str | None) -> str:
         return sanitize_namespace(namespace, self.default_namespace)

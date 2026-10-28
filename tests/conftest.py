@@ -35,3 +35,10 @@ def receipt_store(tmp_path):
     root = tmp_path / "receipt-vault"
     root.mkdir()
     return Store(Vault(root, kinds=(*KINDS, RECEIPT_KIND)), clock=TickingClock())
+
+
+@pytest.fixture
+def companion_store(tmp_path):
+    root = tmp_path / "companion-vault"
+    root.mkdir()
+    return Store(Vault(root), clock=TickingClock(), companion_max_chars=40)

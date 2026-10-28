@@ -14,4 +14,5 @@ def open_store(config: Config) -> Store:
         config.default_namespace,
         config.redact_secrets,
         git_autocommit=config.git_autocommit,
+        companion_max_chars=config.companion_max_chars if config.companion else None,
     )

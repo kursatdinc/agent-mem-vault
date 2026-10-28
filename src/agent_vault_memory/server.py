@@ -6,6 +6,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
+from agent_vault_memory.companion import format_companion
 from agent_vault_memory.format import format_issues, format_links, format_records, format_timestamp
 from agent_vault_memory.records import KINDS, RECEIPT_KIND
 from agent_vault_memory.sanitize import INPUT_LIMITS
@@ -266,5 +267,30 @@ def create_server(store: Store) -> MCPServer:
         ) -> str:
             record = store.write_receipt(agent, title, summary, refs, namespace, harness, session)
             return f"Receipt saved with ID: {record.id}"
+
+    if store.companion_max_chars is not None:
+
+        @tool(
+            "get_companion",
+            "Read the last-session and threads companion cards of a namespace: short notes from the previous session.",
+        )
+        def get_companion(namespace: Namespace = None) -> str:
+            return format_companion(store.get_companion(namespace))
+
+        @tool(
+            "update_companion",
+            "Replace the last-session and/or threads companion card of a namespace. "
+            f"Each card is limited to {store.companion_max_chars} characters: keep them short and compact old text "
+            "when rewriting.",
+        )
+        def update_companion(
+            namespace: Namespace = None,
+            last_session: _optional_text(
+                "content", "New last-session card: what the last session did and left open"
+            ) = None,
+            threads: _optional_text("content", "New threads card: open threads to pick up") = None,
+        ) -> str:
+            store.update_companion(namespace, last_session, threads)
+            return "Companion updated."
 
     return server

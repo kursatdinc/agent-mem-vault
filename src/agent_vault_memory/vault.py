@@ -116,10 +116,11 @@ class Vault:
         target.parent.mkdir(parents=True, exist_ok=True)
         os.replace(self._write_tmp(text), target)
 
-    def write_generated(self, relpath: str, text: str) -> bool:
+    def write_generated(self, relpath: str, text: str, owner: tuple[str, object] = ("generated", True)) -> bool:
         """Atomically (re)write a generated file; unchanged text is skipped and a note a human wrote is never replaced.
 
-        The caller holds the lock. Returns whether the file changed.
+        `owner` is the frontmatter key and value that mark a file as ours. The caller holds the lock.
+        Returns whether the file changed.
         """
         target = self.root / relpath
         if target.exists():
@@ -127,7 +128,7 @@ class Vault:
             existing = target.read_text(encoding="utf-8")
             if existing == text:
                 return False
-            if read_note(existing)[0].get("generated") is not True:
+            if read_note(existing)[0].get(owner[0]) != owner[1]:
                 raise VaultError(f"refusing to overwrite a file that is not generated: {relpath}")
         target.parent.mkdir(parents=True, exist_ok=True)
         os.replace(self._write_tmp(text), target)
