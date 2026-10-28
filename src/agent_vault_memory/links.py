@@ -46,6 +46,11 @@ def _key(path: str) -> str:
     return path.removesuffix(_MARKDOWN)
 
 
+def normalized_target(raw: str) -> str:
+    """Comparable form of a link as Obsidian reports it: no heading, display text, extension or case."""
+    return _key(link_target(raw)).casefold()
+
+
 class Resolver:
     """Obsidian link resolution: exact path, then name or path suffix with the shortest path winning, then alias."""
 

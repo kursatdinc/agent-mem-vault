@@ -120,6 +120,11 @@ agent-written: true
   absent; if `features.git_autocommit` and the vault is a git repo, commit the touched paths with
   message `avm: <op> <kind> <id8>` (never push). Hub, dashboard or git failures are logged to
   stderr and never fail the write.
+- Decision: the hub is skipped when unchanged (it holds no timestamps) and is never written over a file
+  without `generated: true`. Autocommit uses `git add` plus a path-limited `git commit` on exactly the
+  touched paths; the vault's `.gitignore` edit is left for the user to commit.
+- Decision: record frontmatter is always block style with inline lists (a record without lists used to
+  render as a single `{...}` line, which Obsidian does not read as properties).
 
 ## Reads
 - Each query walks the vault (skipping dot-directories), parses candidate records, filters, ranks
@@ -133,6 +138,8 @@ agent-written: true
 - Link resolution (for `get_links` and the Related block) follows Obsidian's rules: exact
   vault-relative path, else basename match with shortest path winning ties, else frontmatter
   `aliases`; strip `#heading`, `|display`, leading `!`.
+- Decision: link scanning reads wikilinks from every frontmatter string and from the body outside code
+  spans and fences; matching ignores case after the exact-path attempt.
 
 ## Tools (MCP)
 The first 13 keep the names, parameters and reply texts of shared-memory-mcp so existing
@@ -148,7 +155,7 @@ instructions keep working.
 | `read_handoff` | newest pending handoff for the agent, marks it read |
 | `peek_handoff`, `ack_handoff`, `reopen_handoff`, `list_handoffs` | as before |
 | `read_latest_context`, `list_contexts`, `search_memory` | as before; `type` is `handoff` for kind handoff, else `context` |
-| `update_memory` | new: id, expected_revision, any of title/content/tags/status/visibility/validity/rejected_reason |
+| `update_memory` | new: id, expected_revision, any of title/content/tags/status/visibility/validity/rejected_reason; kind, namespace and id are not parameters (extra arguments are refused); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
 | `get_links` | new: outgoing links and backlinks of a record |
 | `list_issues` | new: invalid record candidates with reason |
 | `write_receipt` | feature `receipts`: immutable kind `receipt` with refs (files, commits), harness, session |
@@ -163,6 +170,9 @@ marked in search output.
   git status (branch, dirty, ahead/behind). If Obsidian is running (`pgrep -x Obsidian`) and the
   `obsidian` CLI exists, compare its unresolved-link count for the memory folders with ours and
   print differences. Never launches Obsidian.
+  Decision: parity runs `obsidian unresolved verbose format=json` in the vault directory and expects a JSON
+  list of entries with a link and its source files (the CLI docs do not pin the shape); anything else
+  prints "output not understood" instead of failing.
 - `list`, `search`, `handoffs`: human-readable views of the same store functions.
 - `import <contexts.json>`: one-time import from a shared-memory-mcp JSON store. Keeps ids and
   timestamps; a handoff whose summary starts with `Supersedes <id8>` marks the referenced pending

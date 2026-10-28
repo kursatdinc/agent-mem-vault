@@ -1,3 +1,4 @@
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,7 +24,13 @@ class GitStatus:
 def run_git(cwd: Path, *args: str) -> str:
     try:
         result = subprocess.run(
-            ["git", *args], cwd=cwd, capture_output=True, text=True, timeout=GIT_TIMEOUT_SECONDS, check=False
+            ["git", *args],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            check=False,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         raise GitError(f"git {args[0]} failed: {error}") from error

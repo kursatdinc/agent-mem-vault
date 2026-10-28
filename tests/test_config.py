@@ -75,3 +75,21 @@ def _empty_file(directory: Path) -> str:
     path = directory / "empty.yaml"
     path.write_text("", encoding="utf-8")
     return str(path)
+
+
+def test_git_autocommit_is_off_by_default_and_read_from_the_features_section(tmp_path):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("vault: /v\nfeatures:\n  git_autocommit: true\n", encoding="utf-8")
+    plain = _empty_file(tmp_path)
+
+    assert load_config({"AGENT_VAULT_MEMORY_CONFIG": str(config_file)}).git_autocommit is True
+    assert load_config({"AGENT_VAULT_MEMORY_VAULT": "/v", "AGENT_VAULT_MEMORY_CONFIG": plain}).git_autocommit is False
+
+
+@pytest.mark.parametrize("features", ["features: yes", "features:\n  git_autocommit: sometimes"])
+def test_an_invalid_features_section_is_a_config_error(tmp_path, features):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(f"vault: /v\n{features}\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError):
+        load_config({"AGENT_VAULT_MEMORY_CONFIG": str(config_file)})

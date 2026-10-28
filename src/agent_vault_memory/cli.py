@@ -1,9 +1,9 @@
 import argparse
 import sys
-from collections import Counter
 from importlib.metadata import version
 
 from agent_vault_memory.config import Config, ConfigError, load_config
+from agent_vault_memory.doctor import run_doctor
 from agent_vault_memory.format import format_records
 from agent_vault_memory.server import create_server
 from agent_vault_memory.store import Store
@@ -49,34 +49,15 @@ def _add_filters(parser: argparse.ArgumentParser) -> None:
 
 
 def _open_store(config: Config) -> Store:
-    return Store(Vault(config.vault), config.default_namespace, config.redact_secrets)
+    return Store(
+        Vault(config.vault), config.default_namespace, config.redact_secrets, git_autocommit=config.git_autocommit
+    )
 
 
 def _run_server(config: Config) -> int:
     store = _open_store(config)
     store.vault.clean_tmp_leftovers()
     create_server(store).run()
-    return 0
-
-
-def _doctor(config: Config) -> int:
-    vault = Vault(config.vault)
-    scan = vault.scan()
-    counts = Counter(record.kind for record in scan.records)
-    leftovers = vault.tmp_leftovers()
-    print(f"config file: {config.config_file or 'none (defaults and environment)'}")
-    print(f"vault: {vault.root}")
-    print(f".obsidian: {'present' if (vault.root / '.obsidian').is_dir() else 'missing'}")
-    print(f"default namespace: {config.default_namespace}")
-    print(f"redact secrets: {str(config.redact_secrets).lower()}")
-    breakdown = ", ".join(f"{kind} {count}" for kind, count in sorted(counts.items()))
-    print(f"records: {len(scan.records)}" + (f" ({breakdown})" if breakdown else ""))
-    print(f"issues: {len(scan.issues)}")
-    for issue in scan.issues:
-        print(f"  {issue.path}: {issue.reason}")
-    print(f"tmp leftovers: {len(leftovers)}")
-    for path in leftovers:
-        print(f"  {path.name}")
     return 0
 
 
@@ -89,7 +70,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command is None:
         return _run_server(config)
     if args.command == "doctor":
-        return _doctor(config)
+        return run_doctor(config)
     store = _open_store(config)
     if args.command == "list":
         records = store.list_contexts(args.namespace, args.agent, args.tags, args.type, args.kind, args.limit)
