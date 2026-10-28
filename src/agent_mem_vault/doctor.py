@@ -2,11 +2,11 @@ import json
 import subprocess
 from collections import Counter
 
-from agent_vault_memory import git
-from agent_vault_memory.config import Config
-from agent_vault_memory.links import normalized_target, unresolved_targets
-from agent_vault_memory.runtime import open_vault
-from agent_vault_memory.vault import Vault
+from agent_mem_vault import git
+from agent_mem_vault.config import Config
+from agent_mem_vault.links import normalized_target, unresolved_targets
+from agent_mem_vault.runtime import open_vault
+from agent_mem_vault.vault import Vault
 
 OBSIDIAN_TIMEOUT_SECONDS = 30
 NOT_RUNNING = "Obsidian not running: parity check skipped"

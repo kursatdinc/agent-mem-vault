@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from agent_vault_memory.records import namespace_slug, read_note, render_record
-from agent_vault_memory.vault import Vault
+from agent_mem_vault.records import namespace_slug, read_note, render_record
+from agent_mem_vault.vault import Vault
 
 COMPANION_DIR = "_companion"
 CARD_FILES = {"last_session": "last-session.md", "threads": "threads.md"}

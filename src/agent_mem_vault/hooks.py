@@ -3,20 +3,20 @@ import json
 import sys
 from pathlib import Path
 
-from agent_vault_memory import git
-from agent_vault_memory.config import load_config
-from agent_vault_memory.format import format_brief
-from agent_vault_memory.records import namespace_slug
-from agent_vault_memory.runtime import open_store
-from agent_vault_memory.vault import Vault, log
+from agent_mem_vault import git
+from agent_mem_vault.config import load_config
+from agent_mem_vault.format import format_brief
+from agent_mem_vault.records import namespace_slug
+from agent_mem_vault.runtime import open_store
+from agent_mem_vault.vault import Vault, log
 
 CLIENTS = ("claude", "codex")
 SESSION_START_LIMIT = 9000
 TRUNCATION_NOTE = "\n[brief truncated]"
 HOOK_TIMEOUT_SECONDS = 5
 STOP_NUDGE = (
-    "[agent-vault-memory] Work state changed since the last check. Before finishing, record durable decisions, "
-    "risks and next steps with the agent-vault-memory tools (save_memory with kind decision or risk, "
+    "[agent-mem-vault] Work state changed since the last check. Before finishing, record durable decisions, "
+    "risks and next steps with the agent-mem-vault tools (save_memory with kind decision or risk, "
     "create_handoff for a hand-over). If there is nothing durable to record, say so in one line and stop."
 )
 CLIENT_SETTINGS_FILE = {"claude": "~/.claude/settings.json", "codex": "the hooks.json of your Codex setup"}
@@ -44,7 +44,7 @@ def namespace_for(cwd: Path) -> str:
 
 def print_config(client: str) -> str:
     """The settings snippet for a client. The CLI never edits client settings itself."""
-    command = f"agent-vault-memory hook %s --client {client}"
+    command = f"agent-mem-vault hook %s --client {client}"
     snippet = {
         "hooks": {
             event: [{"hooks": [{"type": "command", "command": command % action, "timeout": HOOK_TIMEOUT_SECONDS}]}]

@@ -3,8 +3,8 @@ import subprocess
 
 import pytest
 
-from agent_vault_memory.cli import main
-from agent_vault_memory.store import Store
+from agent_mem_vault.cli import main
+from agent_mem_vault.store import Store
 
 
 class FakeProcesses:
@@ -43,7 +43,7 @@ def test_help_exits_zero_and_names_the_program(capsys):
 
     output = capsys.readouterr().out
     assert exit_info.value.code == 0
-    assert "agent-vault-memory" in output
+    assert "agent-mem-vault" in output
     for command in ("doctor", "list", "search", "handoffs"):
         assert command in output
 
@@ -51,8 +51,8 @@ def test_help_exits_zero_and_names_the_program(capsys):
 def test_a_missing_vault_setting_is_reported_on_stderr_with_exit_code_two(tmp_path, monkeypatch, capsys):
     config_file = tmp_path / "config.yaml"
     config_file.write_text("", encoding="utf-8")
-    monkeypatch.setenv("AGENT_VAULT_MEMORY_CONFIG", str(config_file))
-    monkeypatch.delenv("AGENT_VAULT_MEMORY_VAULT", raising=False)
+    monkeypatch.setenv("AGENT_MEM_VAULT_CONFIG", str(config_file))
+    monkeypatch.delenv("AGENT_MEM_VAULT_VAULT", raising=False)
 
     assert main(["list"]) == 2
     assert "vault is not configured" in capsys.readouterr().err
@@ -91,7 +91,7 @@ def test_doctor_reports_config_vault_counts_issues_and_leftovers_without_touchin
     store.save_context(agent="a", title="N1", content="c")
     store.save_context(agent="a", title="N2", content="c")
     (configured_vault.root / "default" / "note" / "broken.md").write_text("no frontmatter", encoding="utf-8")
-    (configured_vault.root / ".agent-vault-memory" / "tmp" / "partial.tmp").write_text("x", encoding="utf-8")
+    (configured_vault.root / ".agent-mem-vault" / "tmp" / "partial.tmp").write_text("x", encoding="utf-8")
 
     assert main(["doctor"]) == 0
     first = capsys.readouterr().out
@@ -108,7 +108,7 @@ def test_doctor_reports_config_vault_counts_issues_and_leftovers_without_touchin
     assert "records: 3 (decision 1, note 2)" in first
     assert "issues: 1\n  default/note/broken.md: missing frontmatter" in first
     assert "tmp leftovers: 1\n  partial.tmp" in first
-    assert (configured_vault.root / ".agent-vault-memory" / "tmp" / "partial.tmp").exists()
+    assert (configured_vault.root / ".agent-mem-vault" / "tmp" / "partial.tmp").exists()
 
 
 def test_doctor_does_not_create_the_state_directory_in_a_fresh_vault(configured_vault, capsys):
@@ -151,7 +151,7 @@ def test_doctor_compares_unresolved_links_with_the_obsidian_cli_restricted_to_re
     configured_vault, processes, capsys
 ):
     Store(configured_vault).save_context(
-        agent="a", title="N", content="See [[Missing note#Part|shown]] and [[_index]]."
+        agent="a", title="N", content="See [[Missing note#Part|shown]] and [[default]]."
     )
     path = record_path(configured_vault)
     processes.obsidian_running = True

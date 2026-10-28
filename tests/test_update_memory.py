@@ -1,6 +1,6 @@
 import pytest
 
-from agent_vault_memory.vault import RevisionConflict
+from agent_mem_vault.vault import RevisionConflict
 
 
 def file_text(vault, record):
@@ -132,6 +132,6 @@ def test_an_update_regenerates_the_hub_with_the_new_title(store, vault):
 
     store.update_memory(record.id, title="Pick storage engine")
 
-    hub = (vault.root / "alpha" / "_index.md").read_text(encoding="utf-8")
+    hub = (vault.root / "alpha" / "alpha.md").read_text(encoding="utf-8")
     assert f"- [[{record.path.removesuffix('.md')}|Pick storage engine]] (2026-10-28)" in hub
     assert "Pick storage]]" not in hub

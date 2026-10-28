@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-from agent_vault_memory.links import Links
-from agent_vault_memory.records import Record
-from agent_vault_memory.store import Brief
-from agent_vault_memory.vault import Issue
+from agent_mem_vault.links import Links
+from agent_mem_vault.records import Record
+from agent_mem_vault.store import Brief
+from agent_mem_vault.vault import Issue
 
 
 def format_timestamp(timestamp: str) -> str:

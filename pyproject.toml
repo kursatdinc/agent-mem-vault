@@ -1,18 +1,50 @@
 [project]
-name = "agent-vault-memory"
-version = "0.1.0"
-description = "MCP server giving coding agents durable shared memory stored in an Obsidian vault."
+name = "agent-mem-vault"
+version = "1.0.0"
+description = "MCP server that gives coding agents durable, shared memory stored as notes in an Obsidian vault."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kürşat Dinç" }]
 requires-python = ">=3.12"
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "obsidian",
+    "agent-memory",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "llm",
+    "knowledge-management",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+]
 dependencies = [
     "mcp>=2.3,<3",
     "PyYAML",
     "PyStemmer",
 ]
 
+[project.urls]
+Homepage = "https://github.com/kursatdinc/agent-mem-vault"
+Documentation = "https://github.com/kursatdinc/agent-mem-vault/wiki"
+Issues = "https://github.com/kursatdinc/agent-mem-vault/issues"
+Changelog = "https://github.com/kursatdinc/agent-mem-vault/blob/main/CHANGELOG.md"
+
 [project.scripts]
-agent-vault-memory = "agent_vault_memory.cli:run"
+agent-mem-vault = "agent_mem_vault.cli:run"
 
 [dependency-groups]
 dev = [
@@ -24,8 +56,21 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/examples",
+    "/scripts",
+    "/docs",
+    "/CHANGELOG.md",
+    "/LICENSE",
+    "/README.md",
+    "/uv.lock",
+]
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/agent_vault_memory"]
+packages = ["src/agent_mem_vault"]
 
 [tool.ruff]
 line-length = 120

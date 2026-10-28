@@ -5,12 +5,12 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 
-from agent_vault_memory import git
-from agent_vault_memory.companion import CARD_FILES, OWNER_MARKER, Companion, card_relpath, read_card, render_card
-from agent_vault_memory.generated import DASHBOARD, DASHBOARD_RELPATH, hub_relpath, render_hub
-from agent_vault_memory.legacy import ImportReport, PreparedRecord, superseded_prefix
-from agent_vault_memory.links import Links, link_report
-from agent_vault_memory.records import (
+from agent_mem_vault import git
+from agent_mem_vault.companion import CARD_FILES, OWNER_MARKER, Companion, card_relpath, read_card, render_card
+from agent_mem_vault.generated import DASHBOARD, DASHBOARD_RELPATH, hub_relpath, render_hub
+from agent_mem_vault.legacy import ImportReport, PreparedRecord, superseded_prefix
+from agent_mem_vault.links import Links, link_report
+from agent_mem_vault.records import (
     RECEIPT_KIND,
     Record,
     build_body,
@@ -22,7 +22,7 @@ from agent_vault_memory.records import (
     utc_timestamp,
     wikilink,
 )
-from agent_vault_memory.sanitize import (
+from agent_mem_vault.sanitize import (
     INPUT_LIMITS,
     normalize_limit,
     redact_secrets,
@@ -35,8 +35,8 @@ from agent_vault_memory.sanitize import (
     sanitize_tags,
     sanitize_text,
 )
-from agent_vault_memory.search import query_stems, score
-from agent_vault_memory.vault import Issue, RevisionConflict, Vault, VaultError, log
+from agent_mem_vault.search import query_stems, score
+from agent_mem_vault.vault import Issue, RevisionConflict, Vault, VaultError, log
 
 VISIBILITIES = ("public", "internal", "private")
 VALIDITIES = ("valid", "rejected")

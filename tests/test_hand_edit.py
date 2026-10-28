@@ -1,6 +1,6 @@
 import pytest
 
-from agent_vault_memory.vault import ConflictError
+from agent_mem_vault.vault import ConflictError
 
 
 def test_search_reflects_a_body_edited_directly_in_the_file(store, vault):

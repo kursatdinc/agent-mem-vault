@@ -4,9 +4,9 @@ import sys
 import time
 from pathlib import Path
 
-from agent_vault_memory.records import parse_record
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import STATE_DIR, Vault
+from agent_mem_vault.records import parse_record
+from agent_mem_vault.store import Store
+from agent_mem_vault.vault import STATE_DIR, Vault
 
 WORKER = Path(__file__).with_name("worker.py")
 
@@ -31,7 +31,8 @@ def run_workers(mode: str, vault_root: Path, args: list[str]) -> list[list[str]]
 
 
 def record_files(vault_root: Path) -> list[Path]:
-    return [path for path in vault_root.rglob("*.md") if STATE_DIR not in path.parts and path.name != "_index.md"]
+    hubs = {f"{path.name}.md" for path in vault_root.iterdir()}
+    return [path for path in vault_root.rglob("*.md") if STATE_DIR not in path.parts and path.name not in hubs]
 
 
 def test_two_processes_saving_100_records_each_leave_200_parseable_findable_files(tmp_path):

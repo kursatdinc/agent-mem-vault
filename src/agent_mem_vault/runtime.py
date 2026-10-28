@@ -1,7 +1,7 @@
-from agent_vault_memory.config import Config
-from agent_vault_memory.records import KINDS, RECEIPT_KIND
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import Vault
+from agent_mem_vault.config import Config
+from agent_mem_vault.records import KINDS, RECEIPT_KIND
+from agent_mem_vault.store import Store
+from agent_mem_vault.vault import Vault
 
 
 def open_vault(config: Config) -> Vault:

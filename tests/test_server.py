@@ -230,7 +230,7 @@ def test_update_links_and_issues_tools_reply_and_reject_identity_changes(tmp_pat
     assert replies["kind_change"] is True
     assert replies["namespace_change"] is True
     assert replies["links"] == (
-        "**Pick storage** - alpha\n\nOutgoing links (0):\n\nUnresolved links (0):\n\nBacklinks (1):\n- alpha/_index.md"
+        "**Pick storage** - alpha\n\nOutgoing links (0):\n\nUnresolved links (0):\n\nBacklinks (1):\n- alpha/alpha.md"
     )
     assert replies["links_missing"] == "Memory not found."
     assert replies["issues_none"] == "No issues found."

@@ -5,8 +5,8 @@ import sys
 import time
 from pathlib import Path
 
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import Vault
+from agent_mem_vault.store import Store
+from agent_mem_vault.vault import Vault
 
 
 def main() -> None:

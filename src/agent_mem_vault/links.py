@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agent_vault_memory.records import Record, read_note
-from agent_vault_memory.vault import Vault
+from agent_mem_vault.records import Record, read_note
+from agent_mem_vault.vault import Vault
 
 _WIKILINK = re.compile(r"!?\[\[([^\[\]\n]+?)\]\]")
 _CODE = re.compile(r"```.*?```|`[^`\n]*`", re.DOTALL)

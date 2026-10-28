@@ -1,4 +1,4 @@
-from agent_vault_memory.links import Resolver, link_target, targets_in
+from agent_mem_vault.links import Resolver, link_target, targets_in
 
 
 def write_note(vault, relpath, text):
@@ -79,7 +79,7 @@ def test_get_links_reports_outgoing_unresolved_and_backlinks(store, vault):
         "People/Dana Ruiz.md",
     ]
     assert links.unresolved == ["Missing note"]
-    assert links.backlinks == ["Ideas.md", "Journal.md", "proj/_index.md"]
+    assert links.backlinks == ["Ideas.md", "Journal.md", "proj/proj.md"]
 
 
 def test_supersede_links_show_up_in_both_directions(store):
@@ -90,9 +90,9 @@ def test_supersede_links_show_up_in_both_directions(store):
     _, old_links = store.get_links(old.id)
 
     assert new_links.outgoing == [old.path]
-    assert new_links.backlinks == ["proj/_index.md", old.path]
+    assert new_links.backlinks == [old.path, "proj/proj.md"]
     assert old_links.outgoing == [new.path]
-    assert old_links.backlinks == ["proj/_index.md", new.path]
+    assert old_links.backlinks == [new.path, "proj/proj.md"]
 
 
 def test_get_links_of_an_unknown_id_is_none(store):

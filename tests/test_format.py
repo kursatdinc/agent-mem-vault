@@ -1,4 +1,4 @@
-from agent_vault_memory.format import format_record, format_records, format_timestamp
+from agent_mem_vault.format import format_record, format_records, format_timestamp
 
 
 def test_format_timestamp_renders_en_us_style_in_utc():

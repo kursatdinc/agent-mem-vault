@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from agent_vault_memory.records import KINDS, utc_timestamp
-from agent_vault_memory.sanitize import (
+from agent_mem_vault.records import KINDS, utc_timestamp
+from agent_mem_vault.sanitize import (
     INPUT_LIMITS,
     sanitize_optional_text,
     sanitize_related_files,

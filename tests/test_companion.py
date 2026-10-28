@@ -1,6 +1,6 @@
 import pytest
 
-from agent_vault_memory.vault import VaultError
+from agent_mem_vault.vault import VaultError
 from mcp_session import call, run_session
 
 COMPANION_CONFIG = "features:\n  companion: true\ncompanion:\n  max_chars: 40\n"

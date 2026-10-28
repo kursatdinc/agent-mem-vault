@@ -2,9 +2,9 @@ import subprocess
 
 import pytest
 
-from agent_vault_memory import git
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import Vault
+from agent_mem_vault import git
+from agent_mem_vault.store import Store
+from agent_mem_vault.vault import Vault
 from conftest import TickingClock
 
 
@@ -38,8 +38,8 @@ def test_each_write_commits_the_touched_paths_with_the_users_identity(repo):
     assert run(repo, "log", "--format=%an <%ae>", "-1") == "Dana Tester <dana@example.invalid>"
     assert sorted(run(repo, "show", "--name-only", "--format=", "HEAD~1").splitlines()) == [
         "_dashboards/memory.base",
-        "proj/_index.md",
         record.path,
+        "proj/proj.md",
     ]
     assert run(repo, "show", "--name-only", "--format=", "HEAD").splitlines() == [record.path]
 
@@ -76,7 +76,7 @@ def test_the_state_directory_is_ignored_and_other_files_are_not_committed(repo):
 
     store.save_context(agent="a", title="Note", content="c", namespace="proj")
 
-    assert (repo / ".gitignore").read_text(encoding="utf-8") == "*.log\n.agent-vault-memory/\n"
+    assert (repo / ".gitignore").read_text(encoding="utf-8") == "*.log\n.agent-mem-vault/\n"
     assert run(repo, "status", "--porcelain").splitlines() == ["?? .gitignore", "?? scratch.txt"]
 
 

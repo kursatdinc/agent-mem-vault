@@ -2,7 +2,7 @@ import re
 
 import yaml
 
-from agent_vault_memory.records import RELATED_END, RELATED_START
+from agent_mem_vault.records import RELATED_END, RELATED_START
 
 FILENAME = re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9-]+-[0-9a-f]{8}\.md$")
 
@@ -13,7 +13,7 @@ def test_save_memory_writes_the_documented_record_format(store, vault):
         kind="decision",
         title="Use ADK 2.11 for the agent runtime",
         content="Adopt ADK 2.11.",
-        namespace="project/ai-agents",
+        namespace="project/harbor-api",
         tags=["runtime", "adk"],
         status="accepted",
         related_files=["src/runtime.py"],
@@ -23,7 +23,7 @@ def test_save_memory_writes_the_documented_record_format(store, vault):
     )
 
     folder, filename = record.path.rsplit("/", 1)
-    assert folder == "project-ai-agents/decision"
+    assert folder == "project-harbor-api/decision"
     assert FILENAME.match(filename)
     assert filename == f"2026-10-28-use-adk-2-11-for-the-agent-runtime-{record.id[:8]}.md"
     assert (
@@ -31,7 +31,7 @@ def test_save_memory_writes_the_documented_record_format(store, vault):
         == f"""---
 id: {record.id}
 kind: decision
-namespace: project/ai-agents
+namespace: project/harbor-api
 agent: claude-code
 title: Use ADK 2.11 for the agent runtime
 created: 2026-10-28T09:00:01Z

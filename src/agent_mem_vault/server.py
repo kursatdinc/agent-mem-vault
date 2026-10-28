@@ -6,12 +6,12 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
-from agent_vault_memory.companion import format_companion
-from agent_vault_memory.format import format_brief, format_issues, format_links, format_records, format_timestamp
-from agent_vault_memory.records import KINDS, RECEIPT_KIND
-from agent_vault_memory.sanitize import INPUT_LIMITS
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import RevisionConflict, VaultError
+from agent_mem_vault.companion import format_companion
+from agent_mem_vault.format import format_brief, format_issues, format_links, format_records, format_timestamp
+from agent_mem_vault.records import KINDS, RECEIPT_KIND
+from agent_mem_vault.sanitize import INPUT_LIMITS
+from agent_mem_vault.store import Store
+from agent_mem_vault.vault import RevisionConflict, VaultError
 
 ENGLISH = " Memory content is written in English."
 
@@ -62,7 +62,7 @@ def _anticipated_errors(function: Callable[..., str]) -> Callable[..., str]:
 
 
 def create_server(store: Store) -> MCPServer:
-    server = MCPServer("agent-vault-memory")
+    server = MCPServer("agent-mem-vault")
     FilterKind = Annotated[
         Literal[*store.vault.kinds] | None, Field(description="Optional structured memory kind filter")
     ]

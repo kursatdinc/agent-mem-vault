@@ -7,14 +7,14 @@ import time
 
 import pytest
 
-from agent_vault_memory.cli import main
-from agent_vault_memory.store import Store
+from agent_mem_vault.cli import main
+from agent_mem_vault.store import Store
 from conftest import TickingClock
 
 HOOKS_ON = "features:\n  hooks: true\n"
 STOP_NUDGE_TEXT = (
-    "[agent-vault-memory] Work state changed since the last check. Before finishing, record durable decisions, "
-    "risks and next steps with the agent-vault-memory tools (save_memory with kind decision or risk, "
+    "[agent-mem-vault] Work state changed since the last check. Before finishing, record durable decisions, "
+    "risks and next steps with the agent-mem-vault tools (save_memory with kind decision or risk, "
     "create_handoff for a hand-over). If there is nothing durable to record, say so in one line and stop."
 )
 
@@ -119,18 +119,18 @@ def test_hooks_print_nothing_and_exit_zero_while_the_feature_is_off(configured_v
 
 def test_every_failure_still_exits_zero_with_the_reason_on_stderr(hooks_vault, repo, tmp_path, monkeypatch, capsys):
     argv = ["hook", "session-start", "--client", "codex"]
-    monkeypatch.setenv("AGENT_VAULT_MEMORY_VAULT", str(tmp_path / "missing-vault"))
+    monkeypatch.setenv("AGENT_MEM_VAULT_VAULT", str(tmp_path / "missing-vault"))
     missing_vault = run_cli(monkeypatch, capsys, argv, {"cwd": str(repo)})
-    monkeypatch.delenv("AGENT_VAULT_MEMORY_VAULT")
+    monkeypatch.delenv("AGENT_MEM_VAULT_VAULT")
     no_vault_setting = run_cli(monkeypatch, capsys, argv, {"cwd": str(repo)})
-    monkeypatch.setenv("AGENT_VAULT_MEMORY_VAULT", str(hooks_vault.root))
+    monkeypatch.setenv("AGENT_MEM_VAULT_VAULT", str(hooks_vault.root))
     monkeypatch.chdir(tmp_path)
     garbage_payload = run_cli(monkeypatch, capsys, argv, raw="not json")
 
     assert missing_vault == (
         0,
         "",
-        "agent-vault-memory: hook session-start skipped: "
+        "agent-mem-vault: hook session-start skipped: "
         f"vault path is not a directory: {tmp_path / 'missing-vault'}\n",
     )
     assert no_vault_setting[0:2] == (0, "")
@@ -158,7 +158,7 @@ def test_stop_nudges_once_per_git_state_change(hooks_vault, repo, monkeypatch, c
     assert dirtied == (0, block, "")
     assert dirtied_again == (0, "", "")
     assert committed == (0, block, "")
-    assert (hooks_vault.root / ".agent-vault-memory" / "state" / "stop-project-demo-repo").is_file()
+    assert (hooks_vault.root / ".agent-mem-vault" / "state" / "stop-project-demo-repo").is_file()
 
 
 def test_stop_for_codex_prints_the_nudge_as_plain_text_and_respects_an_active_stop_hook(
@@ -190,7 +190,7 @@ def test_print_config_prints_the_settings_snippet_and_never_touches_client_setti
 
     code, out, err = run_cli(monkeypatch, capsys, ["hook", "print-config", "--client", client])
 
-    command = f"agent-vault-memory hook %s --client {client}"
+    command = f"agent-mem-vault hook %s --client {client}"
     assert code == 0
     assert json.loads(out) == {
         "hooks": {
@@ -227,8 +227,8 @@ def test_session_start_finishes_under_two_seconds_on_a_5000_record_vault(tmp_pat
     (tmp_path / "p1").mkdir()
     environment = {
         "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin",
-        "AGENT_VAULT_MEMORY_VAULT": str(vault_root),
-        "AGENT_VAULT_MEMORY_CONFIG": str(config_file),
+        "AGENT_MEM_VAULT_VAULT": str(vault_root),
+        "AGENT_MEM_VAULT_CONFIG": str(config_file),
     }
 
     started = time.perf_counter()
@@ -236,7 +236,7 @@ def test_session_start_finishes_under_two_seconds_on_a_5000_record_vault(tmp_pat
         [
             sys.executable,
             "-c",
-            "from agent_vault_memory.cli import run; run()",
+            "from agent_mem_vault.cli import run; run()",
             "hook",
             "session-start",
             "--client",

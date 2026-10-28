@@ -2,9 +2,9 @@ import re
 
 import pytest
 
-from agent_vault_memory.records import render_record
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import VaultError
+from agent_mem_vault.records import render_record
+from agent_mem_vault.store import Store
+from agent_mem_vault.vault import VaultError
 
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 

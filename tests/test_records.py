@@ -1,6 +1,6 @@
 import pytest
 
-from agent_vault_memory.records import (
+from agent_mem_vault.records import (
     RELATED_END,
     RELATED_START,
     RecordError,
@@ -17,7 +17,7 @@ from agent_vault_memory.records import (
 
 
 def test_namespace_slug_replaces_runs_of_other_characters():
-    assert namespace_slug("project/ai-agents") == "project-ai-agents"
+    assert namespace_slug("project/harbor-api") == "project-harbor-api"
     assert namespace_slug("  Weird__Name!! 2 ") == "weird-name-2"
     assert namespace_slug("///") == "unnamed"
 

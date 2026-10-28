@@ -7,8 +7,8 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "agent-vault-memory"
-version = "0.1.0"
+name = "agent-mem-vault"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },

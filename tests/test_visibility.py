@@ -1,6 +1,6 @@
-from agent_vault_memory.cli import main
-from agent_vault_memory.format import format_records
-from agent_vault_memory.store import Store
+from agent_mem_vault.cli import main
+from agent_mem_vault.format import format_records
+from agent_mem_vault.store import Store
 from conftest import TickingClock
 from mcp_session import call, run_session
 

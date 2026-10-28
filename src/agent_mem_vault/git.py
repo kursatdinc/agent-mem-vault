@@ -3,7 +3,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from agent_vault_memory.vault import log
+from agent_mem_vault.vault import log
 
 GIT_TIMEOUT_SECONDS = 30
 

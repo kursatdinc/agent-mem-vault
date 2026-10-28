@@ -3,8 +3,8 @@ import os
 
 import pytest
 
-from agent_vault_memory.records import render_record
-from agent_vault_memory.vault import ConflictError, LockTimeoutError, Vault, VaultError
+from agent_mem_vault.records import render_record
+from agent_mem_vault.vault import ConflictError, LockTimeoutError, Vault, VaultError
 
 
 def write_record(vault, relpath, meta, body="Body text.\n"):
@@ -62,7 +62,7 @@ def test_state_dir_is_gitignored_only_inside_a_git_repository(tmp_path):
     (repo / ".gitignore").write_text("*.log", encoding="utf-8")
     Vault(repo).ensure_state()
     Vault(repo).ensure_state()
-    assert (repo / ".gitignore").read_text(encoding="utf-8") == "*.log\n.agent-vault-memory/\n"
+    assert (repo / ".gitignore").read_text(encoding="utf-8") == "*.log\n.agent-mem-vault/\n"
 
 
 def test_scan_reports_invalid_candidates_and_ignores_everything_else(vault):
@@ -73,7 +73,7 @@ def test_scan_reports_invalid_candidates_and_ignores_everything_else(vault):
     write_record(vault, "proj/decision/wrong-folder.md", valid_meta("33333333", kind="note"))
     (vault.root / "proj/note/broken.md").write_text("---\nid: [unclosed\n---\nbody", encoding="utf-8")
     (vault.root / "proj/note/plain.md").write_text("no frontmatter at all", encoding="utf-8")
-    write_record(vault, "proj/_index.md", valid_meta("44444444"))
+    write_record(vault, "proj/proj.md", valid_meta("44444444"))
     write_record(vault, "proj/unknown-kind/x.md", valid_meta("55555555"))
     write_record(vault, "loose.md", valid_meta("66666666"))
     write_record(vault, ".hidden/note/x.md", valid_meta("77777777"))

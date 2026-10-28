@@ -1,7 +1,7 @@
 import pytest
 
-from agent_vault_memory.records import RECEIPT_KIND
-from agent_vault_memory.vault import VaultError
+from agent_mem_vault.records import RECEIPT_KIND
+from agent_mem_vault.vault import VaultError
 from mcp_session import call, run_session
 
 RECEIPT_CONFIG = "features:\n  receipts: true\n"

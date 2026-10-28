@@ -12,8 +12,8 @@ def run_session(tmp_path, scenario, config_text=""):
     config_file.write_text(config_text, encoding="utf-8")
     parameters = StdioServerParameters(
         command=sys.executable,
-        args=["-c", "from agent_vault_memory.cli import run; run()"],
-        env={"AGENT_VAULT_MEMORY_VAULT": str(vault_root), "AGENT_VAULT_MEMORY_CONFIG": str(config_file)},
+        args=["-c", "from agent_mem_vault.cli import run; run()"],
+        env={"AGENT_MEM_VAULT_VAULT": str(vault_root), "AGENT_MEM_VAULT_CONFIG": str(config_file)},
     )
 
     async def session_run():

@@ -3,25 +3,25 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from agent_vault_memory.config import Config, ConfigError, load_config
-from agent_vault_memory.doctor import run_doctor
-from agent_vault_memory.format import format_records
-from agent_vault_memory.hooks import CLIENTS, run_hook
-from agent_vault_memory.legacy import parse_store
-from agent_vault_memory.runtime import open_store
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import VaultError
+from agent_mem_vault.config import Config, ConfigError, load_config
+from agent_mem_vault.doctor import run_doctor
+from agent_mem_vault.format import format_records
+from agent_mem_vault.hooks import CLIENTS, run_hook
+from agent_mem_vault.legacy import parse_store
+from agent_mem_vault.runtime import open_store
+from agent_mem_vault.store import Store
+from agent_mem_vault.vault import VaultError
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="agent-vault-memory",
+        prog="agent-mem-vault",
         description=(
             "MCP server giving coding agents durable shared memory stored in an Obsidian vault. "
             "Without a subcommand it runs the MCP server over stdio."
         ),
     )
-    parser.add_argument("--version", action="version", version=version("agent-vault-memory"))
+    parser.add_argument("--version", action="version", version=version("agent-mem-vault"))
     commands = parser.add_subparsers(dest="command")
 
     commands.add_parser("doctor", help="check configuration, vault and record counts")
@@ -94,7 +94,7 @@ def _add_filters(parser: argparse.ArgumentParser) -> None:
 
 
 def _run_server(config: Config) -> int:
-    from agent_vault_memory.server import create_server
+    from agent_mem_vault.server import create_server
 
     store = open_store(config)
     store.vault.clean_tmp_leftovers()
@@ -144,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return _dispatch(args, load_config())
     except (ConfigError, VaultError, ValueError, TypeError) as error:
-        print(f"agent-vault-memory: {error}", file=sys.stderr)
+        print(f"agent-mem-vault: {error}", file=sys.stderr)
         return 2
 
 

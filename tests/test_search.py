@@ -1,4 +1,4 @@
-from agent_vault_memory.search import query_stems, stems
+from agent_mem_vault.search import query_stems, stems
 
 
 def titles(records):

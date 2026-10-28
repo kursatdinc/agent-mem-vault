@@ -2,9 +2,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from agent_vault_memory.records import KINDS, RECEIPT_KIND
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import Vault
+from agent_mem_vault.records import KINDS, RECEIPT_KIND
+from agent_mem_vault.store import Store
+from agent_mem_vault.vault import Vault
 
 
 class TickingClock:
@@ -50,8 +50,8 @@ def configured_vault(tmp_path, monkeypatch):
     root.mkdir()
     config_file = tmp_path / "config.yaml"
     config_file.write_text("", encoding="utf-8")
-    monkeypatch.setenv("AGENT_VAULT_MEMORY_VAULT", str(root))
-    monkeypatch.setenv("AGENT_VAULT_MEMORY_CONFIG", str(config_file))
-    monkeypatch.delenv("AGENT_VAULT_MEMORY_DEFAULT_NAMESPACE", raising=False)
-    monkeypatch.delenv("AGENT_VAULT_MEMORY_REDACT_SECRETS", raising=False)
+    monkeypatch.setenv("AGENT_MEM_VAULT_VAULT", str(root))
+    monkeypatch.setenv("AGENT_MEM_VAULT_CONFIG", str(config_file))
+    monkeypatch.delenv("AGENT_MEM_VAULT_DEFAULT_NAMESPACE", raising=False)
+    monkeypatch.delenv("AGENT_MEM_VAULT_REDACT_SECRETS", raising=False)
     return Vault(root)

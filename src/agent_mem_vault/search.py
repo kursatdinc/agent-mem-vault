@@ -3,7 +3,7 @@ from functools import lru_cache
 
 import Stemmer
 
-from agent_vault_memory.records import Record
+from agent_mem_vault.records import Record
 
 _STEMMER = Stemmer.Stemmer("english")
 _TOKEN = re.compile(r"\w+")

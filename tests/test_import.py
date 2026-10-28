@@ -3,9 +3,9 @@ import json
 
 import pytest
 
-from agent_vault_memory.cli import main
-from agent_vault_memory.legacy import parse_store
-from agent_vault_memory.store import Store
+from agent_mem_vault.cli import main
+from agent_mem_vault.legacy import parse_store
+from agent_mem_vault.store import Store
 from conftest import TickingClock
 
 FULL_CONTEXT_ID = "11111111-1111-4111-8111-111111111111"
@@ -242,7 +242,7 @@ def test_entries_sharing_a_timestamp_keep_their_original_newest_first_order(stor
 def test_the_import_refreshes_the_namespace_hubs(store, vault, tmp_path):
     run_import(store, write_source(tmp_path, [context_entry()]))
 
-    hub = (vault.root / "project-alpha" / "_index.md").read_text(encoding="utf-8")
+    hub = (vault.root / "project-alpha" / "project-alpha.md").read_text(encoding="utf-8")
     assert (
         f"- [[project-alpha/decision/2026-03-04-pick-storage-{FULL_CONTEXT_ID[:8]}|Pick storage]] (2026-03-04)" in hub
     )

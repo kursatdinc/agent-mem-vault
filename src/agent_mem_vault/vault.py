@@ -9,9 +9,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agent_vault_memory.records import KINDS, Record, RecordError, parse_record, read_note
+from agent_mem_vault.records import KINDS, Record, RecordError, parse_record, read_note
 
-STATE_DIR = ".agent-vault-memory"
+STATE_DIR = ".agent-mem-vault"
 LOCK_TIMEOUT_SECONDS = 5.0
 _LOCK_POLL_SECONDS = 0.005
 
@@ -48,7 +48,7 @@ class ScanResult:
 
 
 def log(message: str) -> None:
-    print(f"agent-vault-memory: {message}", file=sys.stderr)
+    print(f"agent-mem-vault: {message}", file=sys.stderr)
 
 
 class Vault:

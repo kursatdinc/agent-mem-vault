@@ -1,6 +1,6 @@
 import pytest
 
-from agent_vault_memory.sanitize import (
+from agent_mem_vault.sanitize import (
     INPUT_LIMITS,
     normalize_limit,
     redact_secrets,

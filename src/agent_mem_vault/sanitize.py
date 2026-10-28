@@ -1,7 +1,7 @@
 import math
 import re
 
-from agent_vault_memory.records import KINDS
+from agent_mem_vault.records import KINDS
 
 CONTROL_CHARS = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 
