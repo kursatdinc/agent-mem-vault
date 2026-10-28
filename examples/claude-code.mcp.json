@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "agent-mem-vault": {
+      "command": "uvx",
+      "args": ["agent-mem-vault"],
+      "env": {
+        "AGENT_MEM_VAULT_VAULT": "${HOME}/agent-memory"
+      }
+    }
+  }
+}

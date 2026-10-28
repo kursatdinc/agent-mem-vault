@@ -1,0 +1,7 @@
+# Add to ~/.codex/config.toml. Codex does not expand variables, so write the absolute vault path,
+# or drop `env` and set `vault:` in ~/.config/agent-mem-vault/config.yaml instead.
+
+[mcp_servers.agent-mem-vault]
+command = "uvx"
+args = ["agent-mem-vault"]
+env = { AGENT_MEM_VAULT_VAULT = "/home/you/agent-memory" }
