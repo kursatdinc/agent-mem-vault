@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/kursatdinc/agent-mem-vault/discussions
+    about: Ask a question or float an idea in Discussions.
+  - name: Report a security vulnerability
+    url: https://github.com/kursatdinc/agent-mem-vault/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
+  - name: Documentation
+    url: https://github.com/kursatdinc/agent-mem-vault/wiki
+    about: Getting started, configuration, tools reference and FAQ.
