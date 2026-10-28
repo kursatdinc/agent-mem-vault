@@ -165,8 +165,11 @@ class Store:
         status: str = "all",
         limit: float | None = None,
     ) -> list[Record]:
-        records = self._select(namespace, agent=agent, type="handoff", handoff_status=status)
-        return records[: normalize_limit(limit)]
+        destination = sanitize_text(agent, "agent", INPUT_LIMITS["agent"]) if agent else None
+        records = self._select(namespace, type="handoff", handoff_status=status)
+        return [record for record in records if destination is None or record.to == destination][
+            : normalize_limit(limit)
+        ]
 
     def get_last_context(self, namespace: str | None = None, agent: str | None = None) -> Record | None:
         records = self._select(namespace, agent=agent, type="context")

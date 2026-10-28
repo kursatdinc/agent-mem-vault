@@ -125,10 +125,6 @@ class Record:
         return "handoff" if self.kind == "handoff" else "context"
 
     @property
-    def link(self) -> str:
-        return link_for(self.path)
-
-    @property
     def content(self) -> str:
         return self._parts()[0]
 
