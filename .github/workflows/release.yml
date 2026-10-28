@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - name: Check that a stable tag matches the package version
         if: ${{ !contains(github.ref_name, '-') }}
         run: test "v$(uv version --short)" = "$GITHUB_REF_NAME"
