@@ -57,6 +57,11 @@ class _Dumper(yaml.SafeDumper):
     """Writes ISO timestamps unquoted, the way Obsidian expects date properties."""
 
 
+def _represent_flow_list(dumper: yaml.SafeDumper, data: list) -> yaml.SequenceNode:
+    return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
+
+
+_Dumper.add_representer(list, _represent_flow_list)
 _Loader.yaml_implicit_resolvers = _without_timestamp_resolver(yaml.CSafeLoader.yaml_implicit_resolvers)
 _Dumper.yaml_implicit_resolvers = _without_timestamp_resolver(yaml.SafeDumper.yaml_implicit_resolvers)
 
@@ -214,10 +219,23 @@ def render_record(meta: dict[str, Any], body: str) -> str:
         Dumper=_Dumper,
         sort_keys=False,
         allow_unicode=True,
-        default_flow_style=None,
+        default_flow_style=False,
         width=1_000_000,
     )
     return f"---\n{frontmatter}---\n{body}"
+
+
+def read_note(text: str) -> tuple[dict[str, Any], str]:
+    """Frontmatter and body of any note; the frontmatter is empty when absent or unparseable."""
+    text = text.removeprefix("﻿")
+    match = _FRONTMATTER.match(text)
+    if match is None:
+        return {}, text
+    try:
+        meta = yaml.load(match.group(1), Loader=_Loader)
+    except yaml.YAMLError:
+        meta = None
+    return (meta if isinstance(meta, dict) else {}), text[match.end() :]
 
 
 def parse_record(path: str, text: str, mtime_ns: int = 0) -> Record:

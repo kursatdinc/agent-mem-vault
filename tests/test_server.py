@@ -20,6 +20,7 @@ LEGACY_TOOLS = {
     "list_contexts",
     "search_memory",
 }
+NEW_TOOLS = {"update_memory", "get_links", "list_issues"}
 UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
 
@@ -47,13 +48,13 @@ async def call(session, name, **arguments):
     return result.content[0].text
 
 
-def test_tools_list_exposes_the_13_legacy_tools_with_compatible_parameters(tmp_path):
+def test_tools_list_exposes_the_legacy_and_new_tools_with_compatible_parameters(tmp_path):
     async def scenario(session):
         return (await session.list_tools()).tools
 
     tools = {tool.name: tool for tool in run_session(tmp_path, scenario)}
 
-    assert set(tools) == LEGACY_TOOLS
+    assert set(tools) == LEGACY_TOOLS | NEW_TOOLS
     for tool in tools.values():
         assert "Memory content is written in English." in tool.description
     save_memory = tools["save_memory"].input_schema
@@ -89,6 +90,21 @@ def test_tools_list_exposes_the_13_legacy_tools_with_compatible_parameters(tmp_p
         "supersedes",
     }
     assert tools["search_memory"].description.startswith("Search saved contexts and handoffs by text and filters.")
+    update = tools["update_memory"].input_schema
+    assert set(update["properties"]) == {
+        "id",
+        "expected_revision",
+        "title",
+        "content",
+        "tags",
+        "status",
+        "visibility",
+        "validity",
+        "rejected_reason",
+    }
+    assert update["required"] == ["id"]
+    assert tools["get_links"].input_schema["required"] == ["id"]
+    assert tools["list_issues"].input_schema["properties"] == {}
 
 
 def test_every_tool_replies_with_the_legacy_texts(tmp_path):
@@ -192,3 +208,56 @@ def test_invalid_input_is_reported_as_a_tool_error_and_writes_nothing(tmp_path):
     assert blank.is_error is True
     assert "title is required" in blank.content[0].text
     assert listing == "No saved context yet."
+
+
+def test_update_links_and_issues_tools_reply_and_reject_identity_changes(tmp_path):
+    async def scenario(session):
+        replies = {}
+        saved = await call(
+            session,
+            "save_memory",
+            agent="a",
+            kind="decision",
+            title="Pick storage",
+            content="Plain.",
+            namespace="alpha",
+        )
+        record_id = re.search(UUID, saved).group(0)
+        replies["id"] = record_id
+        replies["update"] = await call(session, "update_memory", id=record_id, expected_revision=1, status="accepted")
+        replies["stale"] = await call(session, "update_memory", id=record_id, expected_revision=1, title="Lost")
+        replies["missing"] = await call(session, "update_memory", id="nope", title="Ghost")
+        replies["no_fields"] = (await session.call_tool("update_memory", {"id": record_id})).content[0].text
+        replies["no_reason"] = (
+            (await session.call_tool("update_memory", {"id": record_id, "validity": "rejected"})).content[0].text
+        )
+        replies["kind_change"] = (await session.call_tool("update_memory", {"id": record_id, "kind": "note"})).is_error
+        replies["namespace_change"] = (
+            await session.call_tool("update_memory", {"id": record_id, "namespace": "beta"})
+        ).is_error
+        replies["links"] = await call(session, "get_links", id=record_id)
+        replies["links_missing"] = await call(session, "get_links", id="nope")
+        replies["issues_none"] = await call(session, "list_issues")
+        return replies
+
+    replies = run_session(tmp_path, scenario)
+
+    assert replies["update"] == f"Memory updated. ID: {replies['id']}. Revision: 2"
+    assert replies["stale"] == (
+        "Revision conflict: expected revision 1 but the current revision is 2. Read the record again before updating."
+    )
+    assert replies["missing"] == "Memory not found."
+    assert (
+        replies["no_fields"]
+        == "Error executing tool update_memory: nothing to update: pass at least one field to change"
+    )
+    assert replies["no_reason"] == (
+        "Error executing tool update_memory: rejected_reason is required when validity is rejected"
+    )
+    assert replies["kind_change"] is True
+    assert replies["namespace_change"] is True
+    assert replies["links"] == (
+        "**Pick storage** - alpha\n\nOutgoing links (0):\n\nUnresolved links (0):\n\nBacklinks (1):\n- alpha/_index.md"
+    )
+    assert replies["links_missing"] == "Memory not found."
+    assert replies["issues_none"] == "No issues found."

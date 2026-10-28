@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agent_vault_memory.records import KINDS, Record, RecordError, parse_record
+from agent_vault_memory.records import KINDS, Record, RecordError, parse_record, read_note
 
 STATE_DIR = ".agent-vault-memory"
 LOCK_TIMEOUT_SECONDS = 5.0
@@ -26,6 +26,13 @@ class LockTimeoutError(VaultError):
 
 class ConflictError(VaultError):
     pass
+
+
+class RevisionConflict(VaultError):
+    def __init__(self, expected: int, current: int) -> None:
+        super().__init__(f"expected revision {expected} but the current revision is {current}")
+        self.expected = expected
+        self.current = current
 
 
 @dataclass(frozen=True)
@@ -107,6 +114,23 @@ class Vault:
             raise VaultError(f"refusing to overwrite existing file: {relpath}")
         target.parent.mkdir(parents=True, exist_ok=True)
         os.replace(self._write_tmp(text), target)
+
+    def write_generated(self, relpath: str, text: str) -> bool:
+        """Atomically (re)write a generated file; unchanged text is skipped and a note a human wrote is never replaced.
+
+        The caller holds the lock. Returns whether the file changed.
+        """
+        target = self.root / relpath
+        if target.exists():
+            self._check_inside_vault(target)
+            existing = target.read_text(encoding="utf-8")
+            if existing == text:
+                return False
+            if read_note(existing)[0].get("generated") is not True:
+                raise VaultError(f"refusing to overwrite a file that is not generated: {relpath}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(self._write_tmp(text), target)
+        return True
 
     def update_file(self, relpath: str, build_text: Callable[[Record], str]) -> Record:
         """Re-read, rebuild and atomically replace a record. The caller holds the lock.

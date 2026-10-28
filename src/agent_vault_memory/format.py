@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 
+from agent_vault_memory.links import Links
 from agent_vault_memory.records import Record
+from agent_vault_memory.vault import Issue
 
 
 def format_timestamp(timestamp: str) -> str:
@@ -25,3 +27,19 @@ def format_record(record: Record, index: int) -> str:
 
 def format_records(records: list[Record]) -> str:
     return "\n".join(format_record(record, index) for index, record in enumerate(records))
+
+
+def format_links(record: Record, links: Links) -> str:
+    sections = [f"**{record.title}** - {record.namespace}"]
+    for heading, items in (
+        ("Outgoing links", links.outgoing),
+        ("Unresolved links", links.unresolved),
+        ("Backlinks", links.backlinks),
+    ):
+        sections.append(f"{heading} ({len(items)}):" + "".join(f"\n- {item}" for item in items))
+    return "\n\n".join(sections)
+
+
+def format_issues(issues: list[Issue]) -> str:
+    noun = "issue" if len(issues) == 1 else "issues"
+    return f"{len(issues)} {noun}:" + "".join(f"\n- {issue.path}: {issue.reason}" for issue in issues)

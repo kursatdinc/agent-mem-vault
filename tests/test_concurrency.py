@@ -31,7 +31,7 @@ def run_workers(mode: str, vault_root: Path, args: list[str]) -> list[list[str]]
 
 
 def record_files(vault_root: Path) -> list[Path]:
-    return [path for path in vault_root.rglob("*.md") if STATE_DIR not in path.parts]
+    return [path for path in vault_root.rglob("*.md") if STATE_DIR not in path.parts and path.name != "_index.md"]
 
 
 def test_two_processes_saving_100_records_each_leave_200_parseable_findable_files(tmp_path):

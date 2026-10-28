@@ -4,9 +4,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from agent_vault_memory import git
+from agent_vault_memory.generated import DASHBOARD, DASHBOARD_RELPATH, hub_relpath, render_hub
+from agent_vault_memory.links import Links, link_report
 from agent_vault_memory.records import (
     Record,
     build_body,
+    namespace_slug,
     parse_record,
     record_relpath,
     render_record,
@@ -27,7 +31,10 @@ from agent_vault_memory.sanitize import (
     sanitize_text,
 )
 from agent_vault_memory.search import query_stems, score
-from agent_vault_memory.vault import Vault, VaultError
+from agent_vault_memory.vault import Issue, RevisionConflict, Vault, VaultError, log
+
+VISIBILITIES = ("public", "internal", "private")
+VALIDITIES = ("valid", "rejected")
 
 
 @dataclass(frozen=True)
@@ -36,6 +43,17 @@ class Brief:
     namespace: str
     created: str
     content: str
+
+
+@dataclass(frozen=True)
+class _MemoryChanges:
+    title: str | None
+    content: str | None
+    tags: list[str] | None
+    status: str | None
+    visibility: str | None
+    validity: str | None
+    rejected_reason: str | None
 
 
 def _now() -> datetime:
@@ -49,11 +67,13 @@ class Store:
         default_namespace: str = "default",
         redact: bool = True,
         clock: Callable[[], datetime] = _now,
+        git_autocommit: bool = False,
     ) -> None:
         self.vault = vault
         self.default_namespace = default_namespace
         self.redact = redact
         self.clock = clock
+        self.git_autocommit = git_autocommit
 
     # Writes
 
@@ -142,7 +162,7 @@ class Store:
         safe_namespace = self._namespace(namespace)
         with self.vault.lock():
             pending = self._pending_handoffs(safe_namespace, safe_agent)
-            return self._set_read(pending[0], True) if pending else None
+            return self._set_read(pending[0], True, "read") if pending else None
 
     def ack_handoff(self, id: str, namespace: str | None = None) -> Record | None:
         return self._change_handoff_state(id, namespace, read=True)
@@ -150,7 +170,54 @@ class Store:
     def reopen_handoff(self, id: str, namespace: str | None = None) -> Record | None:
         return self._change_handoff_state(id, namespace, read=False)
 
+    def update_memory(
+        self,
+        id: str,
+        expected_revision: int | None = None,
+        title: str | None = None,
+        content: str | None = None,
+        tags: list[str] | None = None,
+        status: str | None = None,
+        visibility: str | None = None,
+        validity: str | None = None,
+        rejected_reason: str | None = None,
+    ) -> Record | None:
+        """Change mutable fields of one record in place. Kind, namespace, id and file name never change."""
+        safe_id = sanitize_text(id, "id", INPUT_LIMITS["content"])
+        if all(value is None for value in (title, content, tags, status, visibility, validity, rejected_reason)):
+            raise ValueError("nothing to update: pass at least one field to change")
+        changes = _MemoryChanges(
+            title=None if title is None else self._redacted(sanitize_text(title, "title", INPUT_LIMITS["title"])),
+            content=None
+            if content is None
+            else self._redacted(sanitize_text(content, "content", INPUT_LIMITS["content"])),
+            tags=None if tags is None else self._redacted(sanitize_tags(tags)),
+            status=None if status is None else self._redacted(sanitize_text(status, "status", INPUT_LIMITS["status"])),
+            visibility=_choice(visibility, "visibility", VISIBILITIES),
+            validity=_choice(validity, "validity", VALIDITIES),
+            rejected_reason=None
+            if rejected_reason is None
+            else self._redacted(sanitize_text(rejected_reason, "rejected_reason", INPUT_LIMITS["title"])),
+        )
+        with self.vault.lock():
+            target = next((record for record in self.vault.scan().records if record.id == safe_id), None)
+            if target is None:
+                return None
+            updated = self.vault.update_file(
+                target.path, lambda current: self._apply_changes(current, changes, expected_revision)
+            )
+            self._publish("update", updated)
+            return updated
+
     # Reads
+
+    def get_links(self, id: str) -> tuple[Record, Links] | None:
+        safe_id = sanitize_text(id, "id", INPUT_LIMITS["content"])
+        record = next((record for record in self.vault.scan().records if record.id == safe_id), None)
+        return None if record is None else (record, link_report(self.vault, record))
+
+    def list_issues(self) -> list[Issue]:
+        return self.vault.scan().issues
 
     def peek_handoff(self, agent: str, namespace: str | None = None) -> Record | None:
         pending = self._pending_handoffs(
@@ -285,9 +352,9 @@ class Store:
             )
             if handoff is None:
                 return None
-            return self._set_read(handoff, read) if handoff.pending == read else handoff
+            return self._set_read(handoff, read, "ack" if read else "reopen") if handoff.pending == read else handoff
 
-    def _set_read(self, handoff: Record, read: bool) -> Record:
+    def _set_read(self, handoff: Record, read: bool, op: str) -> Record:
         def rebuild(current: Record) -> str:
             meta = dict(current.meta)
             meta["read"] = read
@@ -297,7 +364,55 @@ class Store:
                 meta.pop("read_at", None)
             return self._revised(current, meta)
 
-        return self.vault.update_file(handoff.path, rebuild)
+        updated = self.vault.update_file(handoff.path, rebuild)
+        self._publish(op, updated)
+        return updated
+
+    def _apply_changes(self, current: Record, changes: _MemoryChanges, expected_revision: int | None) -> str:
+        if expected_revision is not None and current.revision != expected_revision:
+            raise RevisionConflict(expected_revision, current.revision)
+        meta = dict(current.meta)
+        if changes.title is not None:
+            meta["title"] = changes.title
+        if changes.tags is not None and changes.tags:
+            meta["tags"] = changes.tags
+        elif changes.tags is not None:
+            meta.pop("tags", None)
+        if changes.status is not None:
+            meta["status"] = changes.status
+        if changes.visibility is not None:
+            meta["visibility"] = changes.visibility
+        reason = changes.rejected_reason if changes.rejected_reason is not None else meta.get("rejected_reason")
+        resulting_validity = changes.validity or meta.get("validity", "valid")
+        if resulting_validity == "rejected":
+            if not reason:
+                raise ValueError("rejected_reason is required when validity is rejected")
+            meta["rejected_reason"] = reason
+        elif changes.rejected_reason is not None:
+            raise ValueError("rejected_reason is only allowed when validity is rejected")
+        else:
+            meta.pop("rejected_reason", None)
+        if changes.validity is not None:
+            meta["validity"] = changes.validity
+        body = None if changes.content is None else build_body(changes.content, current.related_lines)
+        return self._revised(current, meta, body)
+
+    def _publish(self, op: str, record: Record, also_touched: list[str] | None = None) -> None:
+        """Refresh the namespace hub and the dashboard, then commit; none of it may fail the write."""
+        touched = [record.path, *(also_touched or [])]
+        try:
+            hub = hub_relpath(record.namespace)
+            slug = namespace_slug(record.namespace)
+            siblings = [r for r in self.vault.scan().records if namespace_slug(r.namespace) == slug]
+            self.vault.write_generated(hub, render_hub(record.namespace, siblings))
+            touched.append(hub)
+            if not (self.vault.root / DASHBOARD_RELPATH).exists():
+                self.vault.write_new(DASHBOARD_RELPATH, DASHBOARD)
+                touched.append(DASHBOARD_RELPATH)
+        except (OSError, VaultError) as error:
+            log(f"could not refresh generated notes: {error}")
+        if self.git_autocommit:
+            git.autocommit(self.vault.root, touched, f"avm: {op} {record.kind} {record.id[:8]}")
 
     def _revised(self, current: Record, meta: dict[str, Any], body: str | None = None) -> str:
         meta["revision"] = current.revision + 1
@@ -347,6 +462,7 @@ class Store:
             record = parse_record(relpath, text, (self.vault.root / relpath).stat().st_mtime_ns)
             for target in targets:
                 self._mark_superseded(target, record)
+            self._publish("create", record, [target.path for target in targets])
             return record
 
     def _unused_identity(self, namespace: str, kind: str, created: str, title: str) -> tuple[str, str]:
@@ -392,3 +508,9 @@ def _matches_handoff_status(record: Record, status: str) -> bool:
     if status == "read":
         return not record.pending
     return True
+
+
+def _choice(value: str | None, field: str, allowed: tuple[str, ...]) -> str | None:
+    if value is not None and value not in allowed:
+        raise ValueError(f"{field} must be one of: {', '.join(allowed)}")
+    return value

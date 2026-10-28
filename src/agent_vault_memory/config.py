@@ -21,6 +21,7 @@ class Config:
     vault: Path
     default_namespace: str = "default"
     redact_secrets: bool = True
+    git_autocommit: bool = False
     config_file: Path | None = None
 
 
@@ -61,9 +62,13 @@ def load_config(env: Mapping[str, str] | None = None) -> Config:
 
     if not isinstance(vault, str) or not isinstance(namespace, str):
         raise ConfigError("vault and default_namespace must be strings")
+    features = data.get("features") or {}
+    if not isinstance(features, dict):
+        raise ConfigError("features must be a mapping")
     return Config(
         vault=Path(vault).expanduser(),
         default_namespace=namespace,
         redact_secrets=_parse_bool(redact, ENV_REDACT if ENV_REDACT in env else "redact_secrets"),
+        git_autocommit=_parse_bool(features.get("git_autocommit", False), "features.git_autocommit"),
         config_file=config_file,
     )

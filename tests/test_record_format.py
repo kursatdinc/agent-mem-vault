@@ -80,3 +80,12 @@ def test_supersedes_writes_links_and_related_block_on_both_records(store, vault)
     assert old_text.endswith(
         f"Use the old one.\n\n{RELATED_START}\n## Related\n- Superseded by [[{new_link}|New runtime]]\n{RELATED_END}\n"
     )
+
+
+def test_a_record_without_lists_still_has_one_frontmatter_key_per_line(store, vault):
+    record = store.save_context(agent="agent-a", title="Plain", content="Body.", namespace="proj")
+
+    text = (vault.root / record.path).read_text(encoding="utf-8")
+
+    assert text.startswith(f"---\nid: {record.id}\nkind: note\nnamespace: proj\nagent: agent-a\ntitle: Plain\n")
+    assert "{" not in text.split("---\n")[1]

@@ -6,11 +6,11 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
-from agent_vault_memory.format import format_records, format_timestamp
+from agent_vault_memory.format import format_issues, format_links, format_records, format_timestamp
 from agent_vault_memory.records import KINDS
 from agent_vault_memory.sanitize import INPUT_LIMITS
 from agent_vault_memory.store import Store
-from agent_vault_memory.vault import VaultError
+from agent_vault_memory.vault import RevisionConflict, VaultError
 
 ENGLISH = " Memory content is written in English."
 
@@ -33,6 +33,8 @@ OptionalAgent = Annotated[str | None, Field(max_length=INPUT_LIMITS["agent"], de
 ItemType = Annotated[Literal["context", "handoff"] | None, Field(description="Optional item type filter")]
 OptionalKind = Annotated[Kind | None, Field(description="Optional structured memory kind filter")]
 HandoffStatus = Literal["all", "pending", "read"]
+Visibility = Literal["public", "internal", "private"]
+Validity = Literal["valid", "rejected"]
 
 
 def _text(maximum: str, description: str):
@@ -199,5 +201,47 @@ def create_server(store: Store) -> MCPServer:
     def reopen_handoff(id: _text("content", "Handoff ID"), namespace: Namespace = None) -> str:
         record = store.reopen_handoff(id, namespace)
         return f"Handoff reopened. ID: {record.id}" if record else "Handoff not found."
+
+    @tool(
+        "update_memory",
+        "Update the title, content, tags, status, visibility or validity of an existing record by ID. "
+        "Pass expected_revision to detect changes made since the record was last read.",
+    )
+    def update_memory(
+        id: _text("content", "Record ID"),
+        expected_revision: Annotated[
+            int | None, Field(ge=1, description="Optional revision last read; a newer revision returns a conflict")
+        ] = None,
+        title: _optional_text("title", "New title") = None,
+        content: _optional_text("content", "New full content") = None,
+        tags: Annotated[
+            list[Annotated[str, Field(max_length=INPUT_LIMITS["tag"])]] | None,
+            Field(max_length=INPUT_LIMITS["tags"], description="New tags replacing all current tags"),
+        ] = None,
+        status: _optional_text("status", "New status") = None,
+        visibility: Annotated[Visibility | None, Field(description="New visibility")] = None,
+        validity: Annotated[Validity | None, Field(description="New validity; rejected needs rejected_reason")] = None,
+        rejected_reason: _optional_text("title", "Why the record is rejected") = None,
+    ) -> str:
+        try:
+            record = store.update_memory(
+                id, expected_revision, title, content, tags, status, visibility, validity, rejected_reason
+            )
+        except RevisionConflict as conflict:
+            return (
+                f"Revision conflict: expected revision {conflict.expected} but the current revision is "
+                f"{conflict.current}. Read the record again before updating."
+            )
+        return f"Memory updated. ID: {record.id}. Revision: {record.revision}" if record else "Memory not found."
+
+    @tool("get_links", "List the outgoing links and the backlinks of a record by ID.")
+    def get_links(id: _text("content", "Record ID")) -> str:
+        found = store.get_links(id)
+        return format_links(*found) if found else "Memory not found."
+
+    @tool("list_issues", "List vault files that look like records but cannot be used, with the reason.")
+    def list_issues() -> str:
+        issues = store.list_issues()
+        return format_issues(issues) if issues else "No issues found."
 
     return server
