@@ -7,7 +7,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from agent_vault_memory.format import format_issues, format_links, format_records, format_timestamp
-from agent_vault_memory.records import KINDS
+from agent_vault_memory.records import KINDS, RECEIPT_KIND
 from agent_vault_memory.sanitize import INPUT_LIMITS
 from agent_vault_memory.store import Store
 from agent_vault_memory.vault import RevisionConflict, VaultError
@@ -31,7 +31,6 @@ Supersedes = Annotated[
 ]
 OptionalAgent = Annotated[str | None, Field(max_length=INPUT_LIMITS["agent"], description="Optional agent filter")]
 ItemType = Annotated[Literal["context", "handoff"] | None, Field(description="Optional item type filter")]
-OptionalKind = Annotated[Kind | None, Field(description="Optional structured memory kind filter")]
 HandoffStatus = Literal["all", "pending", "read"]
 Visibility = Literal["public", "internal", "private"]
 Validity = Literal["valid", "rejected"]
@@ -60,6 +59,9 @@ def _anticipated_errors(function: Callable[..., str]) -> Callable[..., str]:
 
 def create_server(store: Store) -> MCPServer:
     server = MCPServer("agent-vault-memory")
+    FilterKind = Annotated[
+        Literal[*store.vault.kinds] | None, Field(description="Optional structured memory kind filter")
+    ]
 
     def tool(name: str, description: str):
         register = server.tool(name=name, description=description + ENGLISH, structured_output=False)
@@ -131,7 +133,7 @@ def create_server(store: Store) -> MCPServer:
         agent: OptionalAgent = None,
         tags: Tags = None,
         type: ItemType = None,
-        kind: OptionalKind = None,
+        kind: FilterKind = None,
         limit: Annotated[float | None, Field(description="Maximum number of items to list, default: 10")] = None,
     ) -> str:
         records = store.list_contexts(namespace, agent, tags, type, kind, limit)
@@ -144,7 +146,7 @@ def create_server(store: Store) -> MCPServer:
         agent: OptionalAgent = None,
         tags: Tags = None,
         type: ItemType = None,
-        kind: OptionalKind = None,
+        kind: FilterKind = None,
         handoffStatus: Annotated[HandoffStatus | None, Field(description="Optional status filter for handoffs")] = None,
         limit: Annotated[float | None, Field(description="Maximum number of items to return, default: 10")] = None,
     ) -> str:
@@ -243,5 +245,26 @@ def create_server(store: Store) -> MCPServer:
     def list_issues() -> str:
         issues = store.list_issues()
         return format_issues(issues) if issues else "No issues found."
+
+    if RECEIPT_KIND in store.vault.kinds:
+
+        @tool(
+            "write_receipt",
+            "Record an immutable receipt of finished work with the files and commits it touched.",
+        )
+        def write_receipt(
+            agent: _text("agent", "Agent that did the work"),
+            title: _text("title", "Short receipt title"),
+            summary: _text("content", "What was done"),
+            refs: Annotated[
+                list[Annotated[str, Field(max_length=INPUT_LIMITS["file"])]],
+                Field(max_length=INPUT_LIMITS["refs"], description="File paths or commit SHAs the work touched"),
+            ],
+            namespace: Namespace = None,
+            harness: _optional_text("agent", "Optional client or harness name, for example: claude-code") = None,
+            session: _optional_text("file", "Optional session identifier") = None,
+        ) -> str:
+            record = store.write_receipt(agent, title, summary, refs, namespace, harness, session)
+            return f"Receipt saved with ID: {record.id}"
 
     return server

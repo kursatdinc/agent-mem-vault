@@ -15,6 +15,7 @@ INPUT_LIMITS = {
     "content": 200_000,
     "tag": 64,
     "tags": 20,
+    "refs": 50,
 }
 
 DEFAULT_LIMIT = 10
@@ -85,6 +86,21 @@ def sanitize_related_files(related_files: list[str] | None) -> list[str]:
     if not isinstance(related_files, list):
         raise TypeError("relatedFiles must be an array")
     return [sanitize_text(item, "relatedFile", INPUT_LIMITS["file"]) for item in related_files]
+
+
+def sanitize_refs(refs: list[str] | None) -> list[str]:
+    if not isinstance(refs, list):
+        raise TypeError("refs must be an array")
+    if len(refs) > INPUT_LIMITS["refs"]:
+        raise ValueError(f"refs exceeds {INPUT_LIMITS['refs']} entries")
+    unique: list[str] = []
+    for item in refs:
+        ref = sanitize_text(item, "ref", INPUT_LIMITS["file"])
+        if "\n" in ref or "`" in ref:
+            raise ValueError("ref must not contain newlines or backticks")
+        if ref not in unique:
+            unique.append(ref)
+    return unique
 
 
 def sanitize_ids(ids: list[str] | None) -> list[str]:

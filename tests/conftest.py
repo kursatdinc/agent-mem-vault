@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from agent_vault_memory.records import KINDS, RECEIPT_KIND
 from agent_vault_memory.store import Store
 from agent_vault_memory.vault import Vault
 
@@ -27,3 +28,10 @@ def vault(tmp_path):
 @pytest.fixture
 def store(vault):
     return Store(vault, clock=TickingClock())
+
+
+@pytest.fixture
+def receipt_store(tmp_path):
+    root = tmp_path / "receipt-vault"
+    root.mkdir()
+    return Store(Vault(root, kinds=(*KINDS, RECEIPT_KIND)), clock=TickingClock())

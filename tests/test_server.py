@@ -1,9 +1,6 @@
-import asyncio
 import re
-import sys
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp_session import call, run_session
 
 LEGACY_TOOLS = {
     "save_context",
@@ -22,30 +19,6 @@ LEGACY_TOOLS = {
 }
 NEW_TOOLS = {"update_memory", "get_links", "list_issues"}
 UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-
-
-def run_session(tmp_path, scenario):
-    vault_root = tmp_path / "vault"
-    vault_root.mkdir()
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("", encoding="utf-8")
-    parameters = StdioServerParameters(
-        command=sys.executable,
-        args=["-c", "from agent_vault_memory.cli import run; run()"],
-        env={"AGENT_VAULT_MEMORY_VAULT": str(vault_root), "AGENT_VAULT_MEMORY_CONFIG": str(config_file)},
-    )
-
-    async def session_run():
-        async with stdio_client(parameters) as (read, write), ClientSession(read, write) as session:
-            await session.initialize()
-            return await scenario(session)
-
-    return asyncio.run(asyncio.wait_for(session_run(), timeout=60))
-
-
-async def call(session, name, **arguments):
-    result = await session.call_tool(name, arguments)
-    return result.content[0].text
 
 
 def test_tools_list_exposes_the_legacy_and_new_tools_with_compatible_parameters(tmp_path):

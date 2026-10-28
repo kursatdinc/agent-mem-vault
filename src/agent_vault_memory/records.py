@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 
 KINDS = ("note", "decision", "assumption", "task", "risk", "handoff", "snapshot")
+RECEIPT_KIND = "receipt"
 
 RELATED_START = "<!-- avm:related:start -->"
 RELATED_END = "<!-- avm:related:end -->"
@@ -37,6 +38,9 @@ _KEY_ORDER = (
     "read",
     "read_at",
     "rejected_reason",
+    "refs",
+    "harness",
+    "session",
     "agent-written",
 )
 
@@ -238,7 +242,7 @@ def read_note(text: str) -> tuple[dict[str, Any], str]:
     return (meta if isinstance(meta, dict) else {}), text[match.end() :]
 
 
-def parse_record(path: str, text: str, mtime_ns: int = 0) -> Record:
+def parse_record(path: str, text: str, mtime_ns: int = 0, kinds: tuple[str, ...] = KINDS) -> Record:
     match = _FRONTMATTER.match(text.removeprefix("﻿"))
     if match is None:
         raise RecordError("missing frontmatter")
@@ -251,7 +255,7 @@ def parse_record(path: str, text: str, mtime_ns: int = 0) -> Record:
     for key in ("id", "kind", "namespace"):
         if not isinstance(meta.get(key), str) or not meta[key].strip():
             raise RecordError(f"missing or invalid {key}")
-    if meta["kind"] not in KINDS:
+    if meta["kind"] not in kinds:
         raise RecordError(f"unknown kind: {meta['kind']}")
     body = text.removeprefix("﻿")[match.end() :]
     return Record(path=path, meta=meta, body=body, mtime_ns=mtime_ns)

@@ -5,6 +5,7 @@ from collections import Counter
 from agent_vault_memory import git
 from agent_vault_memory.config import Config
 from agent_vault_memory.links import normalized_target, unresolved_targets
+from agent_vault_memory.runtime import open_vault
 from agent_vault_memory.vault import Vault
 
 OBSIDIAN_TIMEOUT_SECONDS = 30
@@ -12,7 +13,7 @@ NOT_RUNNING = "Obsidian not running: parity check skipped"
 
 
 def run_doctor(config: Config) -> int:
-    vault = Vault(config.vault)
+    vault = open_vault(config)
     scan = vault.scan()
     counts = Counter(record.kind for record in scan.records)
     leftovers = vault.tmp_leftovers()

@@ -8,6 +8,7 @@ from agent_vault_memory import git
 from agent_vault_memory.generated import DASHBOARD, DASHBOARD_RELPATH, hub_relpath, render_hub
 from agent_vault_memory.links import Links, link_report
 from agent_vault_memory.records import (
+    RECEIPT_KIND,
     Record,
     build_body,
     namespace_slug,
@@ -26,6 +27,7 @@ from agent_vault_memory.sanitize import (
     sanitize_kind,
     sanitize_namespace,
     sanitize_optional_text,
+    sanitize_refs,
     sanitize_related_files,
     sanitize_tags,
     sanitize_text,
@@ -135,6 +137,36 @@ class Store:
             tags=["snapshot"],
         )
 
+    def write_receipt(
+        self,
+        agent: str,
+        title: str,
+        summary: str,
+        refs: list[str],
+        namespace: str | None = None,
+        harness: str | None = None,
+        session: str | None = None,
+    ) -> Record:
+        """Record finished work with the files and commits it touched. Receipts are immutable."""
+        if RECEIPT_KIND not in self.vault.kinds:
+            raise VaultError("receipts are disabled: set features.receipts in the config")
+        safe_refs = sanitize_refs(refs)
+        fields = {
+            "refs": safe_refs,
+            "harness": sanitize_optional_text(harness, "harness", INPUT_LIMITS["agent"]),
+            "session": sanitize_optional_text(session, "session", INPUT_LIMITS["file"]),
+        }
+        return self._create(
+            kind=RECEIPT_KIND,
+            agent=sanitize_text(agent, "agent", INPUT_LIMITS["agent"]),
+            namespace=self._namespace(namespace),
+            title=sanitize_text(title, "title", INPUT_LIMITS["title"]),
+            content=sanitize_text(summary, "summary", INPUT_LIMITS["content"]),
+            tags=[RECEIPT_KIND],
+            fields=fields,
+            related=[f"- `{self._redacted(ref)}`" for ref in safe_refs],
+        )
+
     def create_handoff(
         self,
         to: str,
@@ -203,6 +235,8 @@ class Store:
             target = next((record for record in self.vault.scan().records if record.id == safe_id), None)
             if target is None:
                 return None
+            if target.kind == RECEIPT_KIND:
+                raise VaultError("receipts are immutable and cannot be updated")
             updated = self.vault.update_file(
                 target.path, lambda current: self._apply_changes(current, changes, expected_revision)
             )
@@ -430,6 +464,7 @@ class Store:
         tags: list[str],
         fields: dict[str, Any] | None = None,
         supersedes_ids: list[str] | None = None,
+        related: list[str] | None = None,
     ) -> Record:
         with self.vault.lock():
             targets = self._supersede_targets(supersedes_ids or [], namespace, kind)
@@ -456,10 +491,10 @@ class Store:
             if targets:
                 meta["supersedes"] = [wikilink(target.path) for target in targets]
             meta["agent-written"] = True
-            related = [f"- Supersedes {wikilink(target.path, target.title)}" for target in targets]
-            text = render_record(meta, build_body(self._redacted(content), related))
+            related_lines = [f"- Supersedes {wikilink(target.path, target.title)}" for target in targets]
+            text = render_record(meta, build_body(self._redacted(content), [*related_lines, *(related or [])]))
             self.vault.write_new(relpath, text)
-            record = parse_record(relpath, text, (self.vault.root / relpath).stat().st_mtime_ns)
+            record = parse_record(relpath, text, (self.vault.root / relpath).stat().st_mtime_ns, self.vault.kinds)
             for target in targets:
                 self._mark_superseded(target, record)
             self._publish("create", record, [target.path for target in targets])
@@ -483,6 +518,8 @@ class Store:
                 raise VaultError(f"Record not found in namespace {namespace}: {target_id}")
             if kind == "handoff" and target.kind != "handoff":
                 raise VaultError(f"Record is not a handoff: {target_id}")
+            if target.kind == RECEIPT_KIND:
+                raise VaultError(f"Record is an immutable receipt: {target_id}")
             if target.meta.get("superseded_by"):
                 raise VaultError(f"Record is already superseded: {target_id}")
             targets.append(target)

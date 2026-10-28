@@ -93,3 +93,46 @@ def test_an_invalid_features_section_is_a_config_error(tmp_path, features):
 
     with pytest.raises(ConfigError):
         load_config({"AGENT_VAULT_MEMORY_CONFIG": str(config_file)})
+
+
+def test_feature_flags_default_to_off_except_visibility_and_are_read_from_the_features_section(tmp_path):
+    plain = load_config({"AGENT_VAULT_MEMORY_VAULT": "/v", "AGENT_VAULT_MEMORY_CONFIG": _empty_file(tmp_path)})
+    config_file = tmp_path / "features.yaml"
+    config_file.write_text(
+        "vault: /v\nfeatures:\n  receipts: true\n  companion: true\n  visibility: false\n  hooks: true\n"
+        "companion:\n  max_chars: 500\n",
+        encoding="utf-8",
+    )
+    configured = load_config({"AGENT_VAULT_MEMORY_CONFIG": str(config_file)})
+
+    assert (plain.receipts, plain.companion, plain.visibility, plain.hooks, plain.companion_max_chars) == (
+        False,
+        False,
+        True,
+        False,
+        3000,
+    )
+    assert (
+        configured.receipts,
+        configured.companion,
+        configured.visibility,
+        configured.hooks,
+        configured.companion_max_chars,
+    ) == (True, True, False, True, 500)
+
+
+@pytest.mark.parametrize(
+    ("section", "message"),
+    [
+        ("features:\n  receipts: maybe", "features.receipts must be true or false"),
+        ("companion:\n  max_chars: 0", "companion.max_chars must be a positive integer"),
+        ("companion:\n  max_chars: lots", "companion.max_chars must be a positive integer"),
+        ("companion: 5", "companion must be a mapping"),
+    ],
+)
+def test_invalid_feature_values_are_config_errors_naming_the_key(tmp_path, section, message):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(f"vault: /v\n{section}\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match=message):
+        load_config({"AGENT_VAULT_MEMORY_CONFIG": str(config_file)})

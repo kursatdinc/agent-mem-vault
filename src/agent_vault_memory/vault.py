@@ -52,11 +52,12 @@ def log(message: str) -> None:
 
 
 class Vault:
-    def __init__(self, root: Path, lock_timeout: float = LOCK_TIMEOUT_SECONDS) -> None:
+    def __init__(self, root: Path, lock_timeout: float = LOCK_TIMEOUT_SECONDS, kinds: tuple[str, ...] = KINDS) -> None:
         if not root.is_dir():
             raise VaultError(f"vault path is not a directory: {root}")
         self.root = root.resolve()
         self.lock_timeout = lock_timeout
+        self.kinds = kinds
         self.state_dir = self.root / STATE_DIR
         self.tmp_dir = self.state_dir / "tmp"
         self.lock_path = self.state_dir / "lock"
@@ -141,13 +142,13 @@ class Vault:
         target = self.root / relpath
         for _ in range(2):
             raw = target.read_bytes()
-            record = parse_record(relpath, raw.decode("utf-8"), target.stat().st_mtime_ns)
+            record = parse_record(relpath, raw.decode("utf-8"), target.stat().st_mtime_ns, self.kinds)
             tmp = self._write_tmp(build_text(record))
             if hashlib.sha256(target.read_bytes()).digest() != hashlib.sha256(raw).digest():
                 tmp.unlink(missing_ok=True)
                 continue
             os.replace(tmp, target)
-            return parse_record(relpath, target.read_text(encoding="utf-8"), target.stat().st_mtime_ns)
+            return parse_record(relpath, target.read_text(encoding="utf-8"), target.stat().st_mtime_ns, self.kinds)
         raise ConflictError(f"{relpath} was changed while updating it; try again")
 
     def scan(self) -> ScanResult:
@@ -157,7 +158,7 @@ class Vault:
             try:
                 self._check_inside_vault(path)
                 text = path.read_text(encoding="utf-8")
-                record = parse_record(relpath, text, path.stat().st_mtime_ns)
+                record = parse_record(relpath, text, path.stat().st_mtime_ns, self.kinds)
             except (OSError, UnicodeDecodeError, RecordError, VaultError) as error:
                 result.issues.append(Issue(relpath, _reason(error)))
                 continue
@@ -174,7 +175,7 @@ class Vault:
 
     def _candidates(self) -> Iterator[tuple[str, Path]]:
         for namespace_dir in _subdirectories(self.root):
-            for kind in KINDS:
+            for kind in self.kinds:
                 kind_dir = namespace_dir / kind
                 if not kind_dir.is_dir() or kind_dir.is_symlink():
                     continue

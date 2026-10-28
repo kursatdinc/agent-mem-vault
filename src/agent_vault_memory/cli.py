@@ -5,9 +5,9 @@ from importlib.metadata import version
 from agent_vault_memory.config import Config, ConfigError, load_config
 from agent_vault_memory.doctor import run_doctor
 from agent_vault_memory.format import format_records
+from agent_vault_memory.runtime import open_store
 from agent_vault_memory.server import create_server
-from agent_vault_memory.store import Store
-from agent_vault_memory.vault import Vault, VaultError
+from agent_vault_memory.vault import VaultError
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -48,14 +48,8 @@ def _add_filters(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--limit", type=float)
 
 
-def _open_store(config: Config) -> Store:
-    return Store(
-        Vault(config.vault), config.default_namespace, config.redact_secrets, git_autocommit=config.git_autocommit
-    )
-
-
 def _run_server(config: Config) -> int:
-    store = _open_store(config)
+    store = open_store(config)
     store.vault.clean_tmp_leftovers()
     create_server(store).run()
     return 0
@@ -71,7 +65,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return _run_server(config)
     if args.command == "doctor":
         return run_doctor(config)
-    store = _open_store(config)
+    store = open_store(config)
     if args.command == "list":
         records = store.list_contexts(args.namespace, args.agent, args.tags, args.type, args.kind, args.limit)
         return _print_records(records, "No saved context yet.")
