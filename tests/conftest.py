@@ -42,3 +42,16 @@ def companion_store(tmp_path):
     root = tmp_path / "companion-vault"
     root.mkdir()
     return Store(Vault(root), clock=TickingClock(), companion_max_chars=40)
+
+
+@pytest.fixture
+def configured_vault(tmp_path, monkeypatch):
+    root = tmp_path / "vault"
+    root.mkdir()
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("", encoding="utf-8")
+    monkeypatch.setenv("AGENT_VAULT_MEMORY_VAULT", str(root))
+    monkeypatch.setenv("AGENT_VAULT_MEMORY_CONFIG", str(config_file))
+    monkeypatch.delenv("AGENT_VAULT_MEMORY_DEFAULT_NAMESPACE", raising=False)
+    monkeypatch.delenv("AGENT_VAULT_MEMORY_REDACT_SECRETS", raising=False)
+    return Vault(root)

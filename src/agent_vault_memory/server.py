@@ -7,7 +7,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from agent_vault_memory.companion import format_companion
-from agent_vault_memory.format import format_issues, format_links, format_records, format_timestamp
+from agent_vault_memory.format import format_brief, format_issues, format_links, format_records, format_timestamp
 from agent_vault_memory.records import KINDS, RECEIPT_KIND
 from agent_vault_memory.sanitize import INPUT_LIMITS
 from agent_vault_memory.store import Store
@@ -32,6 +32,9 @@ Supersedes = Annotated[
 ]
 OptionalAgent = Annotated[str | None, Field(max_length=INPUT_LIMITS["agent"], description="Optional agent filter")]
 ItemType = Annotated[Literal["context", "handoff"] | None, Field(description="Optional item type filter")]
+IncludePrivate = Annotated[
+    bool, Field(description="Include private records; hidden by default while the visibility feature is on")
+]
 HandoffStatus = Literal["all", "pending", "read"]
 Visibility = Literal["public", "internal", "private"]
 Validity = Literal["valid", "rejected"]
@@ -122,8 +125,10 @@ def create_server(store: Store) -> MCPServer:
         return record.content if record else "No pending handoff."
 
     @tool("read_latest_context", "Read the most recent saved context, optionally filtered by agent.")
-    def read_latest_context(namespace: Namespace = None, agent: OptionalAgent = None) -> str:
-        record = store.get_last_context(namespace, agent)
+    def read_latest_context(
+        namespace: Namespace = None, agent: OptionalAgent = None, include_private: IncludePrivate = False
+    ) -> str:
+        record = store.get_last_context(namespace, agent, include_private)
         if record is None:
             return "No context found."
         return f"**{record.title}** - {record.agent} - {format_timestamp(record.created)}\n\n{record.content}"
@@ -136,9 +141,10 @@ def create_server(store: Store) -> MCPServer:
         type: ItemType = None,
         kind: FilterKind = None,
         limit: Annotated[float | None, Field(description="Maximum number of items to list, default: 10")] = None,
+        include_private: IncludePrivate = False,
     ) -> str:
-        records = store.list_contexts(namespace, agent, tags, type, kind, limit)
-        return format_records(records) if records else "No saved context yet."
+        records = store.list_contexts(namespace, agent, tags, type, kind, limit, include_private)
+        return format_records(records, store.visibility_filter) if records else "No saved context yet."
 
     @tool("search_memory", "Search saved contexts and handoffs by text and filters.")
     def search_memory(
@@ -150,9 +156,12 @@ def create_server(store: Store) -> MCPServer:
         kind: FilterKind = None,
         handoffStatus: Annotated[HandoffStatus | None, Field(description="Optional status filter for handoffs")] = None,
         limit: Annotated[float | None, Field(description="Maximum number of items to return, default: 10")] = None,
+        include_private: IncludePrivate = False,
     ) -> str:
-        records = store.search_memory(namespace, query, agent, tags, type, kind, handoffStatus or "all", limit)
-        return format_records(records) if records else "No matching memory found."
+        records = store.search_memory(
+            namespace, query, agent, tags, type, kind, handoffStatus or "all", limit, include_private
+        )
+        return format_records(records, store.visibility_filter) if records else "No matching memory found."
 
     @tool("create_snapshot", "Save a durable snapshot summary for a namespace.")
     def create_snapshot(
@@ -171,8 +180,7 @@ def create_server(store: Store) -> MCPServer:
             float | None, Field(description="Maximum number of recent items to include when no snapshot exists")
         ] = None,
     ) -> str:
-        brief = store.get_project_brief(namespace, limit)
-        return f"**{brief.title}** - {brief.namespace} - {format_timestamp(brief.created)}\n\n{brief.content}"
+        return format_brief(store.get_project_brief(namespace, limit))
 
     @tool("list_handoffs", "List handoffs, optionally filtered by destination agent and status.")
     def list_handoffs(

@@ -15,4 +15,5 @@ def open_store(config: Config) -> Store:
         config.redact_secrets,
         git_autocommit=config.git_autocommit,
         companion_max_chars=config.companion_max_chars if config.companion else None,
+        visibility_filter=config.visibility,
     )

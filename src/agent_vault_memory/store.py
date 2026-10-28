@@ -72,6 +72,7 @@ class Store:
         clock: Callable[[], datetime] = _now,
         git_autocommit: bool = False,
         companion_max_chars: int | None = None,
+        visibility_filter: bool = True,
     ) -> None:
         self.vault = vault
         self.default_namespace = default_namespace
@@ -79,6 +80,7 @@ class Store:
         self.clock = clock
         self.git_autocommit = git_autocommit
         self.companion_max_chars = companion_max_chars
+        self.visibility_filter = visibility_filter
 
     # Writes
 
@@ -309,8 +311,10 @@ class Store:
             : normalize_limit(limit)
         ]
 
-    def get_last_context(self, namespace: str | None = None, agent: str | None = None) -> Record | None:
-        records = self._select(namespace, agent=agent, type="context")
+    def get_last_context(
+        self, namespace: str | None = None, agent: str | None = None, include_private: bool = False
+    ) -> Record | None:
+        records = self._select(namespace, agent=agent, type="context", include_private=include_private)
         return records[0] if records else None
 
     def list_contexts(
@@ -321,8 +325,9 @@ class Store:
         type: str | None = None,
         kind: str | None = None,
         limit: float | None = None,
+        include_private: bool = False,
     ) -> list[Record]:
-        records = self._select(namespace, agent=agent, tags=tags, type=type, kind=kind)
+        records = self._select(namespace, agent=agent, tags=tags, type=type, kind=kind, include_private=include_private)
         return records[: normalize_limit(limit)]
 
     def search_memory(
@@ -335,8 +340,17 @@ class Store:
         kind: str | None = None,
         handoff_status: str = "all",
         limit: float | None = None,
+        include_private: bool = False,
     ) -> list[Record]:
-        records = self._select(namespace, agent=agent, tags=tags, type=type, kind=kind, handoff_status=handoff_status)
+        records = self._select(
+            namespace,
+            agent=agent,
+            tags=tags,
+            type=type,
+            kind=kind,
+            handoff_status=handoff_status,
+            include_private=include_private,
+        )
         if query:
             wanted = query_stems(sanitize_text(query, "query", INPUT_LIMITS["content"]))
             scored = [(score(record, wanted), record) for record in records]
@@ -399,8 +413,10 @@ class Store:
         type: str | None = None,
         kind: str | None = None,
         handoff_status: str = "all",
+        include_private: bool = True,
     ) -> list[Record]:
         safe_namespace = self._namespace(namespace)
+        hide_private = self.visibility_filter and not include_private
         safe_agent = sanitize_text(agent, "agent", INPUT_LIMITS["agent"]) if agent else None
         safe_tags = sanitize_tags(tags)
         return [
@@ -410,6 +426,7 @@ class Store:
             and (safe_agent is None or record.agent == safe_agent)
             and (type is None or record.type == type)
             and (kind is None or record.kind == kind)
+            and not (hide_private and record.meta.get("visibility") == "private")
             and set(safe_tags) <= set(record.tags)
             and (record.type != "handoff" or _matches_handoff_status(record, handoff_status))
         ]

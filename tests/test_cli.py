@@ -5,7 +5,6 @@ import pytest
 
 from agent_vault_memory.cli import main
 from agent_vault_memory.store import Store
-from agent_vault_memory.vault import Vault
 
 
 class FakeProcesses:
@@ -36,19 +35,6 @@ def processes(monkeypatch):
     fake = FakeProcesses(subprocess.run)
     monkeypatch.setattr(subprocess, "run", fake)
     return fake
-
-
-@pytest.fixture
-def configured_vault(tmp_path, monkeypatch):
-    root = tmp_path / "vault"
-    root.mkdir()
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("", encoding="utf-8")
-    monkeypatch.setenv("AGENT_VAULT_MEMORY_VAULT", str(root))
-    monkeypatch.setenv("AGENT_VAULT_MEMORY_CONFIG", str(config_file))
-    monkeypatch.delenv("AGENT_VAULT_MEMORY_DEFAULT_NAMESPACE", raising=False)
-    monkeypatch.delenv("AGENT_VAULT_MEMORY_REDACT_SECRETS", raising=False)
-    return Vault(root)
 
 
 def test_help_exits_zero_and_names_the_program(capsys):

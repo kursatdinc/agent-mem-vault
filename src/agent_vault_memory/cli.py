@@ -28,6 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     listing.add_argument("--type", choices=["context", "handoff"])
     listing.add_argument("--kind")
     listing.add_argument("--tag", action="append", dest="tags")
+    listing.add_argument("--include-private", action="store_true")
 
     search = commands.add_parser("search", help="search records by text")
     search.add_argument("query")
@@ -35,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--type", choices=["context", "handoff"])
     search.add_argument("--kind")
     search.add_argument("--tag", action="append", dest="tags")
+    search.add_argument("--include-private", action="store_true")
 
     handoffs = commands.add_parser("handoffs", help="list handoffs")
     _add_filters(handoffs)
@@ -55,8 +57,8 @@ def _run_server(config: Config) -> int:
     return 0
 
 
-def _print_records(records: list, empty: str) -> int:
-    print(format_records(records) if records else empty)
+def _print_records(records: list, empty: str, mark_rejected: bool = False) -> int:
+    print(format_records(records, mark_rejected) if records else empty)
     return 0
 
 
@@ -67,13 +69,22 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return run_doctor(config)
     store = open_store(config)
     if args.command == "list":
-        records = store.list_contexts(args.namespace, args.agent, args.tags, args.type, args.kind, args.limit)
-        return _print_records(records, "No saved context yet.")
+        records = store.list_contexts(
+            args.namespace, args.agent, args.tags, args.type, args.kind, args.limit, args.include_private
+        )
+        return _print_records(records, "No saved context yet.", store.visibility_filter)
     if args.command == "search":
         records = store.search_memory(
-            args.namespace, args.query, args.agent, args.tags, args.type, args.kind, limit=args.limit
+            args.namespace,
+            args.query,
+            args.agent,
+            args.tags,
+            args.type,
+            args.kind,
+            limit=args.limit,
+            include_private=args.include_private,
         )
-        return _print_records(records, "No matching memory found.")
+        return _print_records(records, "No matching memory found.", store.visibility_filter)
     return _print_records(
         store.list_handoffs(args.namespace, args.agent, args.status, args.limit), "No handoffs found."
     )
