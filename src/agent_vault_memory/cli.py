@@ -1,12 +1,15 @@
 import argparse
 import sys
 from importlib.metadata import version
+from pathlib import Path
 
 from agent_vault_memory.config import Config, ConfigError, load_config
 from agent_vault_memory.doctor import run_doctor
 from agent_vault_memory.format import format_records
 from agent_vault_memory.hooks import CLIENTS, run_hook
+from agent_vault_memory.legacy import parse_store
 from agent_vault_memory.runtime import open_store
+from agent_vault_memory.store import Store
 from agent_vault_memory.vault import VaultError
 
 
@@ -38,6 +41,17 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--tag", action="append", dest="tags")
     search.add_argument("--include-private", action="store_true")
 
+    importing = commands.add_parser("import", help="one-time, idempotent import of a shared-memory-mcp contexts.json")
+    importing.add_argument("source", type=Path)
+    importing.add_argument(
+        "--namespace-map",
+        action="append",
+        default=[],
+        type=_namespace_mapping,
+        metavar="OLD=NEW",
+        help="import records of namespace OLD into namespace NEW; repeatable",
+    )
+
     handoffs = commands.add_parser("handoffs", help="list handoffs")
     _add_filters(handoffs)
     handoffs.add_argument("--status", choices=["all", "pending", "read"], default="all")
@@ -51,6 +65,26 @@ def build_parser() -> argparse.ArgumentParser:
     ):
         events.add_parser(action, help=text).add_argument("--client", choices=CLIENTS, required=True)
     return parser
+
+
+def _namespace_mapping(text: str) -> tuple[str, str]:
+    old, separator, new = text.partition("=")
+    if not (old and separator and new):
+        raise argparse.ArgumentTypeError(f"expected OLD=NEW, got {text!r}")
+    return old, new
+
+
+def _run_import(args: argparse.Namespace, store: Store) -> int:
+    prepared, errors = parse_store(args.source, dict(args.namespace_map))
+    report = store.import_records(prepared)
+    errors += report.errors
+    print(f"imported: {report.imported}")
+    print(f"skipped: {report.skipped}")
+    print(f"superseded-marked: {report.superseded_marked}")
+    print(f"errors: {len(errors)}")
+    for error in errors:
+        print(f"  {error}")
+    return 0
 
 
 def _add_filters(parser: argparse.ArgumentParser) -> None:
@@ -79,6 +113,8 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "doctor":
         return run_doctor(config)
     store = open_store(config)
+    if args.command == "import":
+        return _run_import(args, store)
     if args.command == "list":
         records = store.list_contexts(
             args.namespace, args.agent, args.tags, args.type, args.kind, args.limit, args.include_private

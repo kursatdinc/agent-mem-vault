@@ -1,3 +1,4 @@
+import os
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -7,6 +8,7 @@ from typing import Any
 from agent_vault_memory import git
 from agent_vault_memory.companion import CARD_FILES, OWNER_MARKER, Companion, card_relpath, read_card, render_card
 from agent_vault_memory.generated import DASHBOARD, DASHBOARD_RELPATH, hub_relpath, render_hub
+from agent_vault_memory.legacy import ImportReport, PreparedRecord, superseded_prefix
 from agent_vault_memory.links import Links, link_report
 from agent_vault_memory.records import (
     RECEIPT_KIND,
@@ -277,6 +279,39 @@ class Store:
             if self.git_autocommit and touched:
                 git.autocommit(self.vault.root, touched, f"avm: update companion {namespace_slug(safe_namespace)}")
 
+    def import_records(self, prepared: list[PreparedRecord]) -> ImportReport:
+        """Write legacy records oldest first, keeping ids and timestamps; ids already in the vault are skipped."""
+        report = ImportReport()
+        with self.vault.lock():
+            present = {record.id for record in self.vault.scan().records}
+            written: list[Record] = []
+            for item in prepared:
+                record_id = item.meta["id"]
+                if record_id in present:
+                    report.skipped += 1
+                    continue
+                relpath = record_relpath(
+                    item.meta["namespace"], item.meta["kind"], item.meta["created"], item.meta["title"], record_id
+                )
+                text = render_record(item.meta, build_body(item.content, []))
+                try:
+                    self.vault.write_new(relpath, text)
+                except (OSError, VaultError) as error:
+                    report.errors.append(f"{record_id}: {error}")
+                    continue
+                os.utime(self.vault.root / relpath, ns=(item.timestamp_ns, item.timestamp_ns))
+                present.add(record_id)
+                written.append(parse_record(relpath, text, item.timestamp_ns, self.vault.kinds))
+                report.imported += 1
+            touched = [record.path for record in written]
+            report.superseded_marked, marked_paths = self._mark_imported_supersedes(written, report.errors)
+            touched += marked_paths
+            for namespace in sorted({record.namespace for record in written}):
+                touched += self._refresh_generated(namespace)
+            if self.git_autocommit and written:
+                git.autocommit(self.vault.root, list(dict.fromkeys(touched)), f"avm: import {len(written)} records")
+        return report
+
     # Reads
 
     def get_companion(self, namespace: str | None = None) -> Companion:
@@ -499,20 +534,24 @@ class Store:
 
     def _publish(self, op: str, record: Record, also_touched: list[str] | None = None) -> None:
         """Refresh the namespace hub and the dashboard, then commit; none of it may fail the write."""
-        touched = [record.path, *(also_touched or [])]
+        touched = [record.path, *(also_touched or []), *self._refresh_generated(record.namespace)]
+        if self.git_autocommit:
+            git.autocommit(self.vault.root, touched, f"avm: {op} {record.kind} {record.id[:8]}")
+
+    def _refresh_generated(self, namespace: str) -> list[str]:
+        touched: list[str] = []
         try:
-            hub = hub_relpath(record.namespace)
-            slug = namespace_slug(record.namespace)
+            hub = hub_relpath(namespace)
+            slug = namespace_slug(namespace)
             siblings = [r for r in self.vault.scan().records if namespace_slug(r.namespace) == slug]
-            self.vault.write_generated(hub, render_hub(record.namespace, siblings))
+            self.vault.write_generated(hub, render_hub(namespace, siblings))
             touched.append(hub)
             if not (self.vault.root / DASHBOARD_RELPATH).exists():
                 self.vault.write_new(DASHBOARD_RELPATH, DASHBOARD)
                 touched.append(DASHBOARD_RELPATH)
         except (OSError, VaultError) as error:
             log(f"could not refresh generated notes: {error}")
-        if self.git_autocommit:
-            git.autocommit(self.vault.root, touched, f"avm: {op} {record.kind} {record.id[:8]}")
+        return touched
 
     def _revised(self, current: Record, meta: dict[str, Any], body: str | None = None) -> str:
         meta["revision"] = current.revision + 1
@@ -590,6 +629,36 @@ class Store:
                 raise VaultError(f"Record is already superseded: {target_id}")
             targets.append(target)
         return targets
+
+    def _mark_imported_supersedes(self, written: list[Record], errors: list[str]) -> tuple[int, list[str]]:
+        """Mark the pending handoff named by each imported `Supersedes <id8>` handoff; returns the count and paths."""
+        named = [(record, superseded_prefix(record.content)) for record in written if record.kind == "handoff"]
+        replacements = [(record, prefix) for record, prefix in named if prefix]
+        if not replacements:
+            return 0, []
+        records = self.vault.scan().records
+        marked: dict[str, Record] = {}
+        for replacement, prefix in replacements:
+            candidates = [
+                record
+                for record in records
+                if record.kind == "handoff"
+                and record.namespace == replacement.namespace
+                and record.pending
+                and record.id != replacement.id
+                and record.id.startswith(prefix)
+                and record.id not in marked
+            ]
+            if len(candidates) > 1:
+                errors.append(f"{replacement.id}: Supersedes {prefix} matches {len(candidates)} pending handoffs")
+            elif candidates:
+                try:
+                    self._mark_superseded(candidates[0], replacement)
+                except VaultError as error:
+                    errors.append(f"{replacement.id}: could not mark {candidates[0].id} superseded: {error}")
+                else:
+                    marked[candidates[0].id] = candidates[0]
+        return len(marked), [record.path for record in marked.values()]
 
     def _mark_superseded(self, target: Record, replacement: Record) -> None:
         def rebuild(current: Record) -> str:
