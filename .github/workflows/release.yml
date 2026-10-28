@@ -20,7 +20,7 @@ jobs:
         if: ${{ !contains(github.ref_name, '-') }}
         run: test "v$(uv version --short)" = "$GITHUB_REF_NAME"
       - run: uv build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
