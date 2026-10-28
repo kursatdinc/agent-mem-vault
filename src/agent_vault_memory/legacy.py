@@ -17,6 +17,7 @@ from agent_vault_memory.sanitize import (
 )
 
 DEFAULT_NAMESPACE = "default"
+TIMESTAMP_MAX_LENGTH = 64
 _SUPERSEDES = re.compile(r"Supersedes\s+([0-9a-fA-F]{8})\b")
 _SUMMARY_HEADING = "## Summary"
 
@@ -78,7 +79,9 @@ def prepare_entry(entry: Any, namespace_map: dict[str, str]) -> PreparedRecord:
         "id": sanitize_text(entry.get("id"), "id", INPUT_LIMITS["content"]),
         "kind": kind,
         "namespace": namespace,
-        "agent": sanitize_text(entry.get("agent") or ("handoff" if entry_type == "handoff" else None), "agent", 100),
+        "agent": sanitize_text(
+            entry.get("agent") or ("handoff" if entry_type == "handoff" else None), "agent", INPUT_LIMITS["agent"]
+        ),
         "title": sanitize_text(entry.get("title"), "title", INPUT_LIMITS["title"]),
         "created": created,
         "updated": created,
@@ -110,12 +113,16 @@ def superseded_prefix(handoff_content: str) -> str | None:
 
 
 def _namespace(value: Any, namespace_map: dict[str, str]) -> str:
-    namespace = DEFAULT_NAMESPACE if value is None or value == "" else sanitize_text(value, "namespace", 100)
+    namespace = (
+        DEFAULT_NAMESPACE
+        if value is None or value == ""
+        else sanitize_text(value, "namespace", INPUT_LIMITS["namespace"])
+    )
     return sanitize_text(namespace_map.get(namespace, namespace), "namespace", INPUT_LIMITS["namespace"])
 
 
 def _timestamp(value: Any, field_name: str) -> tuple[str, int]:
-    text = sanitize_text(value, field_name, INPUT_LIMITS["agent"])
+    text = sanitize_text(value, field_name, TIMESTAMP_MAX_LENGTH)
     try:
         moment = datetime.fromisoformat(text)
     except ValueError:

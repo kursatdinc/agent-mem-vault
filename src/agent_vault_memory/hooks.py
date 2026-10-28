@@ -8,7 +8,7 @@ from agent_vault_memory.config import load_config
 from agent_vault_memory.format import format_brief
 from agent_vault_memory.records import namespace_slug
 from agent_vault_memory.runtime import open_store
-from agent_vault_memory.vault import log
+from agent_vault_memory.vault import Vault, log
 
 CLIENTS = ("claude", "codex")
 SESSION_START_LIMIT = 9000
@@ -94,7 +94,7 @@ def _session_start(client: str, context: str) -> str:
     return context
 
 
-def _git_state_changed(vault, cwd: Path, namespace: str) -> bool:
+def _git_state_changed(vault: Vault, cwd: Path, namespace: str) -> bool:
     """True once per change of (HEAD, working tree status); outside a git work tree there is no state to compare."""
     if not git.inside_work_tree(cwd):
         return False

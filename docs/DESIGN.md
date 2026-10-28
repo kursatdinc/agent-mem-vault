@@ -165,6 +165,21 @@ Visibility (feature on): `private` records never appear in the brief and appear 
 with `include_private: true`. Validity: `rejected` records stay, are excluded from the brief and are
 marked in search output.
 
+- Decision: `features.visibility` is on by default (as the config example above shows); every other
+  feature is off. The optional `include_private` parameter exists on `list_contexts`, `search_memory`
+  and `read_latest_context` in both states and only has an effect while the feature is on. The
+  `[rejected]` mark sits inside the bracket group of a listing line (`[context/note [rejected]]`) and is
+  printed only while the feature is on. `list` and `search` on the CLI take `--include-private`.
+- Decision: `receipt` is a known kind only while `features.receipts` is on; with it off, `receipt/`
+  folders are not scanned. Receipts are immutable: `update_memory` and `supersedes` refuse them. `refs`
+  are written to frontmatter and to the Related list as code spans, not wikilinks, because they are
+  repository paths and SHAs that would otherwise count as unresolved links. `receipt` is not accepted by
+  `save_memory`; it is only created by `write_receipt`.
+- Decision: the companion cap applies to each card separately (`last_session`, `threads`), measured after
+  redaction, and an update replaces the whole card. If either card is over the cap nothing is written.
+  Cards carry `kind: companion` and `agent-written: true`; a file at a card path without
+  `kind: companion` is never overwritten. `get_project_brief` appends only the last-session card.
+
 ## CLI
 - `doctor`: config, vault path, `.obsidian/` present, record count by kind, issues, tmp leftovers,
   git status (branch, dirty, ahead/behind). If Obsidian is running (`pgrep -x Obsidian`) and the
@@ -182,6 +197,22 @@ marked in search output.
   (session-start: the project brief for the namespace derived from the git root basename as
   `project/<basename>`; stop: a nudge to record decisions). `hook print-config --client ...` prints
   the settings snippet to install; the CLI never edits client settings itself.
+  Decision: both events do nothing (empty output, exit 0) while `features.hooks` is off; `print-config`
+  works regardless. Output conventions mirror agent-skillset: session-start prints
+  `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ...}}` for Claude Code and
+  plain text for Codex, capped at 9000 characters (a truncated brief ends with `[brief truncated]`). The
+  stop nudge is `{"decision": "block", "reason": ...}` for Claude Code and plain text for Codex, and is
+  skipped when the input has `stop_hook_active: true`. The change signature (HEAD plus a hash of
+  `git status --porcelain`) is stored per namespace in `<vault>/.agent-vault-memory/state/stop-<ns-slug>`;
+  outside a git work tree the stop hook stays silent. Every hook path exits 0 on any error and logs the
+  reason to stderr; the error path of a missing vault setting or vault directory included.
+  Decision: `import` writes oldest entries first and sets each file's modification time to the legacy
+  timestamp (milliseconds kept there, dropped from `created`), so records sharing a second keep their
+  legacy newest-first order. `created` and `updated` come from `timestamp` (`updated` is `readAt` for a
+  read handoff). An entry without `type` or `kind` is a `note`. An id prefix that matches more than one
+  pending handoff marks nothing and is reported as an error; no match is silent. Entries that cannot be
+  converted (unknown kind, missing title, bad timestamp) are counted as errors and listed; the rest is
+  imported. `--namespace-map old=new` can be repeated and also applies to the default namespace name.
 
 ## Security
 Inputs are length-limited and control characters stripped (limits ported from shared-memory-mcp).

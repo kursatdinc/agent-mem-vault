@@ -104,6 +104,7 @@ def test_doctor_reports_config_vault_counts_issues_and_leftovers_without_touchin
     assert ".obsidian: present" in second
     assert "default namespace: default" in first
     assert "redact secrets: true" in first
+    assert "features: receipts off, companion off, visibility on, hooks off" in first
     assert "records: 3 (decision 1, note 2)" in first
     assert "issues: 1\n  default/note/broken.md: missing frontmatter" in first
     assert "tmp leftovers: 1\n  partial.tmp" in first
