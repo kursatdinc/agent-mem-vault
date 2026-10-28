@@ -15,7 +15,7 @@ writes `.obsidian/`, never launches Obsidian, never pushes git.
 
 ## Runtime and packaging
 - Python >= 3.12, src layout, package `agent_vault_memory`, console script `agent-vault-memory`.
-- Runtime dependencies: `mcp` (official SDK, FastMCP), `PyYAML`, `PyStemmer`. Nothing else.
+- Runtime dependencies: `mcp>=2.3,<3` (official SDK, `MCPServer`; expected failures are raised as `ToolError` so callers read the text), `PyYAML`, `PyStemmer`. Nothing else.
 - Dev: `uv`, `pytest`, `ruff`. Tests use temporary vaults with synthetic data only.
 - `agent-vault-memory` with no arguments runs the MCP server over stdio. Subcommands:
   `doctor`, `list`, `search`, `handoffs`, `import`, `hook`.

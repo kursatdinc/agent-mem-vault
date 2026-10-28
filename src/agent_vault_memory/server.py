@@ -1,12 +1,16 @@
-from typing import Annotated, Literal
+import functools
+from collections.abc import Callable
+from typing import Annotated, Any, Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from agent_vault_memory.format import format_records, format_timestamp
 from agent_vault_memory.records import KINDS
 from agent_vault_memory.sanitize import INPUT_LIMITS
 from agent_vault_memory.store import Store
+from agent_vault_memory.vault import VaultError
 
 ENGLISH = " Memory content is written in English."
 
@@ -39,11 +43,25 @@ def _optional_text(maximum: str, description: str):
     return Annotated[str | None, Field(min_length=1, max_length=INPUT_LIMITS[maximum], description=description)]
 
 
-def create_server(store: Store) -> FastMCP:
-    server = FastMCP("agent-vault-memory")
+def _anticipated_errors(function: Callable[..., str]) -> Callable[..., str]:
+    """mcp 2 hides the text of crashes; validation and vault failures are expected, so the caller reads them."""
+
+    @functools.wraps(function)
+    def guarded(*args: Any, **kwargs: Any) -> str:
+        try:
+            return function(*args, **kwargs)
+        except (ValueError, TypeError, VaultError) as error:
+            raise ToolError(str(error)) from error
+
+    return guarded
+
+
+def create_server(store: Store) -> MCPServer:
+    server = MCPServer("agent-vault-memory")
 
     def tool(name: str, description: str):
-        return server.tool(name=name, description=description + ENGLISH, structured_output=False)
+        register = server.tool(name=name, description=description + ENGLISH, structured_output=False)
+        return lambda function: register(_anticipated_errors(function))
 
     @tool("save_context", "Save free-form context so another MCP-compatible agent can read it later.")
     def save_context(

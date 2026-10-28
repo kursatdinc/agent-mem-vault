@@ -56,7 +56,7 @@ def test_tools_list_exposes_the_13_legacy_tools_with_compatible_parameters(tmp_p
     assert set(tools) == LEGACY_TOOLS
     for tool in tools.values():
         assert "Memory content is written in English." in tool.description
-    save_memory = tools["save_memory"].inputSchema
+    save_memory = tools["save_memory"].input_schema
     assert set(save_memory["properties"]) == {
         "agent",
         "kind",
@@ -81,7 +81,7 @@ def test_tools_list_exposes_the_13_legacy_tools_with_compatible_parameters(tmp_p
         "handoff",
         "snapshot",
     }
-    assert set(tools["create_handoff"].inputSchema["properties"]) == {
+    assert set(tools["create_handoff"].input_schema["properties"]) == {
         "namespace",
         "to",
         "summary",
@@ -187,8 +187,8 @@ def test_invalid_input_is_reported_as_a_tool_error_and_writes_nothing(tmp_path):
 
     bad_kind, too_long, blank, listing = run_session(tmp_path, scenario)
 
-    assert bad_kind.isError is True
-    assert too_long.isError is True
-    assert blank.isError is True
+    assert bad_kind.is_error is True
+    assert too_long.is_error is True
+    assert blank.is_error is True
     assert "title is required" in blank.content[0].text
     assert listing == "No saved context yet."
