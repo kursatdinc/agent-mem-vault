@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-labelledby="title desc">
+  <title id="title">agent-mem-vault</title>
+  <desc id="desc">Coding agents write decisions, risks and handoffs into an Obsidian vault as linked Markdown notes.</desc>
+  <style>
+    .card { fill: #f6f5ff; stroke: #d9d6f5; }
+    .name { fill: #1e1b3a; font: 700 54px ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .tag { fill: #4b4778; font: 400 24px ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .chip { fill: #ffffff; stroke: #b9b3ee; }
+    .chip-text { fill: #3b3680; font: 600 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .edge { stroke: #8a80e0; stroke-width: 3; fill: none; }
+    .node { fill: #7c6cf0; }
+    .node-alt { fill: #3fa796; }
+    .node-warn { fill: #e0894a; }
+    @media (prefers-color-scheme: dark) {
+      .card { fill: #1b1a2e; stroke: #34315a; }
+      .name { fill: #f2f0ff; }
+      .tag { fill: #b8b3e6; }
+      .chip { fill: #24223f; stroke: #4a4580; }
+      .chip-text { fill: #d6d2fa; }
+      .edge { stroke: #6f66c9; }
+      .node { fill: #9a8dff; }
+      .node-alt { fill: #5cc7b4; }
+      .node-warn { fill: #f0a066; }
+    }
+  </style>
+  <rect class="card" x="1" y="1" width="1198" height="298" rx="20"/>
+
+  <g transform="translate(70 0)">
+    <text class="name" x="0" y="130">agent-mem-vault</text>
+    <text class="tag" x="0" y="178">Memory your coding agents share,</text>
+    <text class="tag" x="0" y="212">and you can read, link and fix in Obsidian.</text>
+    <g transform="translate(0 238)">
+      <rect class="chip" x="0" y="0" width="92" height="30" rx="15"/>
+      <text class="chip-text" x="46" y="20" text-anchor="middle">MCP</text>
+      <rect class="chip" x="104" y="0" width="110" height="30" rx="15"/>
+      <text class="chip-text" x="159" y="20" text-anchor="middle">Markdown</text>
+      <rect class="chip" x="226" y="0" width="108" height="30" rx="15"/>
+      <text class="chip-text" x="280" y="20" text-anchor="middle">Obsidian</text>
+    </g>
+  </g>
+
+  <g transform="translate(820 0)">
+    <path class="edge" d="M60 90 L170 60 M170 60 L290 120 M60 90 L120 190 M120 190 L250 220 M290 120 L250 220 M170 60 L250 220"/>
+    <circle class="node" cx="60" cy="90" r="22"/>
+    <circle class="node" cx="170" cy="60" r="16"/>
+    <circle class="node-alt" cx="290" cy="120" r="20"/>
+    <circle class="node-warn" cx="120" cy="190" r="18"/>
+    <circle class="node" cx="250" cy="220" r="24"/>
+  </g>
+</svg>

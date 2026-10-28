@@ -1,6 +1,6 @@
-# agent-vault-memory: design
+# agent-mem-vault: design
 
-Status: pre-alpha. This file is the contract the implementation follows.
+Status: stable. This file is the contract the implementation follows.
 
 ## Purpose
 A local MCP server that gives coding agents (Claude Code, Codex, any MCP client) durable, typed,
@@ -14,17 +14,17 @@ No embeddings, no SQLite, no network calls, no dependency on the Obsidian app be
 writes `.obsidian/`, never launches Obsidian, never pushes git.
 
 ## Runtime and packaging
-- Python >= 3.12, src layout, package `agent_vault_memory`, console script `agent-vault-memory`.
+- Python >= 3.12, src layout, package `agent_mem_vault`, console script `agent-mem-vault`.
 - Runtime dependencies: `mcp>=2.3,<3` (official SDK, `MCPServer`; expected failures are raised as `ToolError` so callers read the text), `PyYAML`, `PyStemmer`. Nothing else.
 - Dev: `uv`, `pytest`, `ruff`. Tests use temporary vaults with synthetic data only.
-- `agent-vault-memory` with no arguments runs the MCP server over stdio. Subcommands:
+- `agent-mem-vault` with no arguments runs the MCP server over stdio. Subcommands:
   `doctor`, `list`, `search`, `handoffs`, `import`, `hook`.
 
 ## Configuration
 Precedence: built-in defaults < config file < environment variables.
-- Config file: `$AGENT_VAULT_MEMORY_CONFIG`, else `~/.config/agent-vault-memory/config.yaml`.
-- Env: `AGENT_VAULT_MEMORY_VAULT` (vault path), `AGENT_VAULT_MEMORY_DEFAULT_NAMESPACE`,
-  `AGENT_VAULT_MEMORY_REDACT_SECRETS` (`true`/`false`).
+- Config file: `$AGENT_MEM_VAULT_CONFIG`, else `~/.config/agent-mem-vault/config.yaml`.
+- Env: `AGENT_MEM_VAULT_VAULT` (vault path), `AGENT_MEM_VAULT_DEFAULT_NAMESPACE`,
+  `AGENT_MEM_VAULT_REDACT_SECRETS` (`true`/`false`).
 
 ```yaml
 vault: ~/path/to/vault          # required (or env)
@@ -45,21 +45,21 @@ companion:
 ```
 <vault>/
   <namespace-slug>/
-    _index.md                       # generated hub note, links every record of the namespace
+    <namespace-slug>.md             # generated hub note, links every record of the namespace
     _companion/last-session.md      # companion feature
     _companion/threads.md           # companion feature
     <kind>/<YYYY-MM-DD>-<title-slug>-<id8>.md
   _dashboards/memory.base           # generated only if absent
-  .agent-vault-memory/              # server-private: lock file, tmp/ for atomic writes
+  .agent-mem-vault/              # server-private: lock file, tmp/ for atomic writes
 ```
 - `namespace-slug`: namespace lowercased, every run of characters outside `[a-z0-9]` replaced by
-  `-`, trimmed (`project/ai-agents` -> `project-ai-agents`). The frontmatter `namespace` is
+  `-`, trimmed (`project/harbor-api` -> `project-harbor-api`). The frontmatter `namespace` is
   authoritative; the folder is cosmetic.
 - `title-slug`: same rule on the title, cut to 48 characters. `id8`: first 8 hex chars of the id.
 - The filename is fixed at creation. Title edits never rename files.
 - A file is a record candidate only if it sits at `<ns-slug>/<kind>/*.md` with `<kind>` a known
   kind. Everything else (user notes, hubs, dashboards, companion cards) is ignored by record reads.
-- `.agent-vault-memory/` is added to the vault's `.gitignore` when the server creates it inside a
+- `.agent-mem-vault/` is added to the vault's `.gitignore` when the server creates it inside a
   git repository.
 
 ## Record format
@@ -67,7 +67,7 @@ companion:
 ---
 id: 3f9a2c1e-...            # uuid4 string, never changes
 kind: decision
-namespace: project/ai-agents
+namespace: project/harbor-api
 agent: claude-code
 title: Use ADK 2.11 for the agent runtime
 created: 2026-10-28T09:13:05Z
@@ -78,7 +78,7 @@ validity: valid              # valid | rejected
 tags: [runtime, adk]
 status: accepted             # optional free text
 related_files: ["[[...]]"]   # optional
-supersedes: ["[[project-ai-agents/decision/2026-09-02-old-a1b2c3d4]]"]   # optional
+supersedes: ["[[project-harbor-api/decision/2026-09-02-old-a1b2c3d4]]"]   # optional
 superseded_by: "[[...]]"     # optional
 next_action: ...             # optional
 branch: ...                  # optional
@@ -95,7 +95,7 @@ agent-written: true
 
 <!-- avm:related:start -->
 ## Related
-- Supersedes [[project-ai-agents/decision/2026-09-02-old-a1b2c3d4|Old title]]
+- Supersedes [[project-harbor-api/decision/2026-09-02-old-a1b2c3d4|Old title]]
 <!-- avm:related:end -->
 ```
 - Only keys with a value are written. One type per key across the vault. Timestamps are UTC ISO
@@ -107,24 +107,26 @@ agent-written: true
   title `Handoff to <to>`.
 
 ## Writes and concurrency
-- Every write takes an exclusive `fcntl.flock` on `<vault>/.agent-vault-memory/lock` (timeout 5 s,
+- Every write takes an exclusive `fcntl.flock` on `<vault>/.agent-mem-vault/lock` (timeout 5 s,
   then a clear error), so two server processes never interleave read-modify-write.
-- Files are written to `<vault>/.agent-vault-memory/tmp/` and moved into place with `os.replace`
+- Files are written to `<vault>/.agent-mem-vault/tmp/` and moved into place with `os.replace`
   (atomic on one filesystem). Leftover tmp files at startup are incomplete writes: removed and
   logged to stderr.
 - Updates (read/ack/reopen a handoff, supersede marking, update_memory) re-read the file under the
   lock, require `revision` to match the expected one when the caller passes `expected_revision`,
   write `revision + 1`, and re-check the file hash immediately before `os.replace`; if a human
   changed it in between, retry once, then return a conflict. Nothing is overwritten silently.
-- After each write: regenerate the namespace hub `_index.md`; create `_dashboards/memory.base` if
+- After each write: regenerate the namespace hub `<namespace-slug>/<namespace-slug>.md`; create `_dashboards/memory.base` if
   absent; if `features.git_autocommit` and the vault is a git repo, commit the touched paths with
   message `avm: <op> <kind> <id8>` (never push). Hub, dashboard or git failures are logged to
   stderr and never fail the write.
+- Decision: the hub is named after its folder (`proj/proj.md`) because Obsidian's graph labels nodes by file
+  name, so every project shows under its own name instead of a column of identical `_index` nodes.
 - Decision: the hub is skipped when unchanged (it holds no timestamps) and is never written over a file
   without `generated: true`. Autocommit uses `git add` plus a path-limited `git commit` on exactly the
   touched paths; the vault's `.gitignore` edit is left for the user to commit.
-- Decision: record frontmatter is always block style with inline lists (a record without lists used to
-  render as a single `{...}` line, which Obsidian does not read as properties).
+- Decision: record frontmatter is always block style with inline lists (a record without lists would
+  otherwise render as a single `{...}` line, which Obsidian does not read as properties).
 
 ## Reads
 - Each query walks the vault (skipping dot-directories), parses candidate records, filters, ranks
@@ -198,12 +200,12 @@ marked in search output.
   `project/<basename>`; stop: a nudge to record decisions). `hook print-config --client ...` prints
   the settings snippet to install; the CLI never edits client settings itself.
   Decision: both events do nothing (empty output, exit 0) while `features.hooks` is off; `print-config`
-  works regardless. Output conventions mirror agent-skillset: session-start prints
+  works regardless. Output conventions: session-start prints
   `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ...}}` for Claude Code and
   plain text for Codex, capped at 9000 characters (a truncated brief ends with `[brief truncated]`). The
   stop nudge is `{"decision": "block", "reason": ...}` for Claude Code and plain text for Codex, and is
   skipped when the input has `stop_hook_active: true`. The change signature (HEAD plus a hash of
-  `git status --porcelain`) is stored per namespace in `<vault>/.agent-vault-memory/state/stop-<ns-slug>`;
+  `git status --porcelain`) is stored per namespace in `<vault>/.agent-mem-vault/state/stop-<ns-slug>`;
   outside a git work tree the stop hook stays silent. Every hook path exits 0 on any error and logs the
   reason to stderr; the error path of a missing vault setting or vault directory included.
   Decision: `import` writes oldest entries first and sets each file's modification time to the legacy
