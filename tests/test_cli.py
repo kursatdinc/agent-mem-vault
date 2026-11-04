@@ -44,8 +44,17 @@ def test_help_exits_zero_and_names_the_program(capsys):
     output = capsys.readouterr().out
     assert exit_info.value.code == 0
     assert "agent-mem-vault" in output
-    for command in ("doctor", "list", "search", "handoffs"):
+    for command in ("doctor", "list", "search", "hook"):
         assert command in output
+    assert "handoffs" not in output
+
+
+def test_the_handoffs_command_is_gone(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["handoffs"])
+
+    assert exit_info.value.code == 2
+    assert "invalid choice: 'handoffs'" in capsys.readouterr().err
 
 
 def test_a_missing_vault_setting_is_reported_on_stderr_with_exit_code_two(tmp_path, monkeypatch, capsys):
@@ -58,29 +67,23 @@ def test_a_missing_vault_setting_is_reported_on_stderr_with_exit_code_two(tmp_pa
     assert "vault is not configured" in capsys.readouterr().err
 
 
-def test_list_search_and_handoffs_print_the_numbered_line_format(configured_vault, capsys):
+def test_list_and_search_print_the_numbered_line_format(configured_vault, capsys):
     store = Store(configured_vault)
     store.save_memory(
         agent="planner", kind="decision", title="Pick storage", content="Markdown files.", namespace="alpha"
     )
     store.save_context(agent="planner", title="Other note", content="Unrelated.", namespace="alpha")
-    store.create_handoff(to="codex", summary="Continue", context="Details", namespace="alpha")
 
     assert main(["list", "--namespace", "alpha", "--kind", "decision"]) == 0
     listed = capsys.readouterr().out.splitlines()
     assert len(listed) == 1
-    assert listed[0].startswith("1. [context/decision] (alpha) Pick storage - planner - ")
+    assert listed[0].startswith("1. [decision] (alpha) Pick storage - planner - ")
 
     assert main(["search", "markdown", "--namespace", "alpha"]) == 0
-    assert capsys.readouterr().out.startswith("1. [context/decision] (alpha) Pick storage - planner - ")
-
-    assert main(["handoffs", "--namespace", "alpha", "--status", "pending", "--agent", "codex"]) == 0
-    assert capsys.readouterr().out.startswith("1. [handoff/handoff -> codex [PENDING]] (alpha) Handoff to codex - ")
+    assert capsys.readouterr().out.startswith("1. [decision] (alpha) Pick storage - planner - ")
 
     assert main(["search", "nonexistent"]) == 0
     assert capsys.readouterr().out == "No matching memory found.\n"
-    assert main(["handoffs", "--namespace", "empty"]) == 0
-    assert capsys.readouterr().out == "No handoffs found.\n"
     assert main(["list", "--namespace", "empty"]) == 0
     assert capsys.readouterr().out == "No saved context yet.\n"
 

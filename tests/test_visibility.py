@@ -60,8 +60,8 @@ def test_rejected_records_are_marked_in_listings_only_when_asked_to(store):
     marked = format_records(records, mark_rejected=True)
     plain = format_records(records)
 
-    assert marked.startswith("1. [context/note [rejected]] (alpha) Wrong claim - a - ")
-    assert plain.startswith("1. [context/note] (alpha) Wrong claim - a - ")
+    assert marked.startswith("1. [note [rejected]] (alpha) Wrong claim - a - ")
+    assert plain.startswith("1. [note] (alpha) Wrong claim - a - ")
 
 
 def test_visibility_is_applied_over_stdio_with_the_optional_include_private_parameter(tmp_path):
@@ -95,13 +95,13 @@ def test_visibility_is_applied_over_stdio_with_the_optional_include_private_para
 
     assert all(param["type"] == "boolean" and param["default"] is False for param in replies["params"].values())
     assert [line.split(" - ")[0] for line in replies["list"].splitlines()] == [
-        "1. [context/note [rejected]] (alpha) Wrong pelican",
-        "2. [context/note] (alpha) Public pelican",
+        "1. [note [rejected]] (alpha) Wrong pelican",
+        "2. [note] (alpha) Public pelican",
     ]
     assert [line.split(" - ")[0] for line in replies["list_private"].splitlines()] == [
-        "1. [context/note [rejected]] (alpha) Wrong pelican",
-        "2. [context/note] (alpha) Private pelican",
-        "3. [context/note] (alpha) Public pelican",
+        "1. [note [rejected]] (alpha) Wrong pelican",
+        "2. [note] (alpha) Private pelican",
+        "3. [note] (alpha) Public pelican",
     ]
     assert replies["search"].count("\n") == 1
     assert "Private pelican" not in replies["search"]
@@ -121,5 +121,5 @@ def test_the_cli_hides_private_records_unless_include_private_is_passed(configur
     assert main(["search", "pelican", "--namespace", "alpha", "--include-private"]) == 0
     searched = capsys.readouterr().out.splitlines()
 
-    assert [line.split(" - ")[0] for line in hidden] == ["1. [context/note] (alpha) Public pelican"]
+    assert [line.split(" - ")[0] for line in hidden] == ["1. [note] (alpha) Public pelican"]
     assert len(shown) == len(searched) == 2

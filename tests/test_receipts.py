@@ -50,7 +50,7 @@ def test_a_receipt_cannot_be_updated_or_superseded(receipt_store):
 
 
 def test_receipts_are_not_a_kind_for_save_memory(receipt_store):
-    with pytest.raises(ValueError, match="kind must be one of: note, decision, assumption, task, risk, handoff"):
+    with pytest.raises(ValueError, match="^kind must be one of: note, decision, assumption, task, risk, snapshot$"):
         receipt_store.save_memory(agent="a", kind="receipt", title="t", content="c")
 
 
@@ -126,4 +126,4 @@ def test_the_receipt_tool_replies_and_update_memory_refuses_the_receipt_over_std
     assert saved.startswith("Receipt saved with ID: ")
     assert update.is_error is True
     assert update.content[0].text == "Error executing tool update_memory: receipts are immutable and cannot be updated"
-    assert listing.startswith("1. [context/receipt] (alpha) Shipped - codex - ")
+    assert listing.startswith("1. [receipt] (alpha) Shipped - codex - ")

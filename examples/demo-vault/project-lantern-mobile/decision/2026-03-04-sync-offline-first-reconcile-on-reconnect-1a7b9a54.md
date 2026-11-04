@@ -1,5 +1,5 @@
 ---
-id: 3e957315-f23e-5fdc-a102-55372387ead3
+id: 1a7b9a54-b2d9-598f-959b-9be103a277b4
 kind: decision
 namespace: project/lantern-mobile
 agent: claude-code

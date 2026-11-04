@@ -5,7 +5,7 @@ from typing import Any
 
 import yaml
 
-KINDS = ("note", "decision", "assumption", "task", "risk", "handoff", "snapshot")
+KINDS = ("note", "decision", "assumption", "task", "risk", "snapshot")
 RECEIPT_KIND = "receipt"
 
 RELATED_START = "<!-- avm:related:start -->"
@@ -34,9 +34,6 @@ _KEY_ORDER = (
     "next_action",
     "branch",
     "commit",
-    "to",
-    "read",
-    "read_at",
     "rejected_reason",
     "refs",
     "harness",
@@ -119,19 +116,6 @@ class Record:
         if isinstance(tags, list):
             return [str(tag) for tag in tags]
         return []
-
-    @property
-    def to(self) -> str | None:
-        target = self.meta.get("to")
-        return str(target) if target else None
-
-    @property
-    def pending(self) -> bool:
-        return self.kind == "handoff" and self.meta.get("read") is not True
-
-    @property
-    def type(self) -> str:
-        return "handoff" if self.kind == "handoff" else "context"
 
     @property
     def content(self) -> str:

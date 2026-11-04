@@ -18,11 +18,9 @@ def format_timestamp(timestamp: str) -> str:
 
 
 def format_record(record: Record, index: int, mark_rejected: bool = False) -> str:
-    destination = f" -> {record.to}" if record.to else ""
-    pending = " [PENDING]" if record.pending else ""
     rejected = " [rejected]" if mark_rejected and record.meta.get("validity") == "rejected" else ""
     return (
-        f"{index + 1}. [{record.type}/{record.kind}{destination}{pending}{rejected}] ({record.namespace}) "
+        f"{index + 1}. [{record.kind}{rejected}] ({record.namespace}) "
         f"{record.title} - {record.agent} - {format_timestamp(record.created)}"
     )
 

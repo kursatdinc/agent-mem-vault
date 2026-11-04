@@ -44,21 +44,16 @@ def test_each_write_commits_the_touched_paths_with_the_users_identity(repo):
     assert run(repo, "show", "--name-only", "--format=", "HEAD").splitlines() == [record.path]
 
 
-def test_handoff_state_changes_and_supersedes_are_committed_with_their_own_operation_name(repo):
+def test_a_supersede_commits_the_new_record_and_the_superseded_one_together(repo):
     store = committing_store(repo)
-    old = store.create_handoff(to="b", summary="One", context="c", namespace="proj")
-    new = store.create_handoff(to="b", summary="Two", context="c", namespace="proj", supersedes=[old.id])
-    store.reopen_handoff(old.id, "proj")
-    store.read_handoff("b", "proj")
+    old = store.save_memory(agent="a", kind="decision", title="One", content="c", namespace="proj")
+    new = store.save_memory(agent="a", kind="decision", title="Two", content="c", namespace="proj", supersedes=[old.id])
 
     assert run(repo, "log", "--format=%s").splitlines() == [
-        f"avm: read handoff {new.id[:8]}",
-        f"avm: reopen handoff {old.id[:8]}",
-        f"avm: create handoff {new.id[:8]}",
-        f"avm: create handoff {old.id[:8]}",
+        f"avm: create decision {new.id[:8]}",
+        f"avm: create decision {old.id[:8]}",
     ]
-    assert old.path in run(repo, "show", "--name-only", "--format=", "HEAD~2").splitlines()
-    assert new.path in run(repo, "show", "--name-only", "--format=", "HEAD~2").splitlines()
+    assert {old.path, new.path} <= set(run(repo, "show", "--name-only", "--format=", "HEAD").splitlines())
 
 
 def test_nothing_is_committed_unless_the_feature_is_on(repo):

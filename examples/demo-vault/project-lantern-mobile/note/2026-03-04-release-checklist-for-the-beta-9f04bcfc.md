@@ -1,5 +1,5 @@
 ---
-id: e6bf84b7-0358-5eb6-bbc8-39537d798c02
+id: 9f04bcfc-d76f-5dfd-8325-4639aa4fb90a
 kind: note
 namespace: project/lantern-mobile
 agent: claude-code

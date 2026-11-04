@@ -94,11 +94,13 @@ def test_parse_record_rejects_unusable_candidates(text, reason):
 
 def test_record_accessors_tolerate_hand_edited_frontmatter():
     record = parse_record(
-        "p/handoff/x.md",
-        "---\nid: a\nkind: handoff\nnamespace: p\ntags: solo\nrevision: nope\nto: codex\n---\nBody\n",
+        "p/note/x.md", "---\nid: a\nkind: note\nnamespace: p\ntags: solo\nrevision: nope\n---\nBody\n"
     )
     assert record.tags == ["solo"]
     assert record.revision == 1
-    assert record.pending is True
-    assert record.type == "handoff"
     assert record.title == "x"
+
+
+def test_handoff_is_not_a_record_kind_any_more():
+    with pytest.raises(RecordError, match="unknown kind: handoff"):
+        parse_record("p/handoff/x.md", "---\nid: a\nkind: handoff\nnamespace: p\n---\nBody\n")

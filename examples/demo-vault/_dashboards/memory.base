@@ -3,17 +3,6 @@ filters:
     - 'note["agent-written"] == true'
 views:
   - type: table
-    name: "Pending handoffs"
-    filters:
-      and:
-        - 'note.kind == "handoff"'
-        - 'note.read == false'
-    order:
-      - file.name
-      - note.to
-      - note.namespace
-      - note.created
-  - type: table
     name: "Decisions and risks"
     filters:
       and:
