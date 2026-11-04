@@ -10,20 +10,16 @@ generated: true
 
 ## note
 
-- [[project-lantern-mobile/note/2026-03-04-release-checklist-for-the-beta-e6bf84b7|Release checklist for the beta]] (2026-03-04)
+- [[project-lantern-mobile/note/2026-03-04-release-checklist-for-the-beta-9f04bcfc|Release checklist for the beta]] (2026-03-04)
 
 ## decision
 
-- [[project-lantern-mobile/decision/2026-03-04-sync-offline-first-reconcile-on-reconnect-3e957315|Sync offline first, reconcile on reconnect]] (2026-03-04)
+- [[project-lantern-mobile/decision/2026-03-04-sync-offline-first-reconcile-on-reconnect-1a7b9a54|Sync offline first, reconcile on reconnect]] (2026-03-04)
 
 ## risk
 
-- [[project-lantern-mobile/risk/2026-03-04-push-token-refresh-fails-silently-on-one-android-1915d639|Push token refresh fails silently on one Android version]] (2026-03-04)
-
-## handoff
-
-- [[project-lantern-mobile/handoff/2026-03-07-handoff-to-claude-code-8c2411d0|Handoff to claude-code]] (2026-03-07)
+- [[project-lantern-mobile/risk/2026-03-04-push-token-refresh-fails-silently-on-one-android-3ea7ecc4|Push token refresh fails silently on one Android version]] (2026-03-04)
 
 ## snapshot
 
-- [[project-lantern-mobile/snapshot/2026-03-07-lantern-mobile-beta-status-20e9e21f|lantern-mobile beta status]] (2026-03-07)
+- [[project-lantern-mobile/snapshot/2026-03-07-lantern-mobile-beta-status-3e957315|lantern-mobile beta status]] (2026-03-07)

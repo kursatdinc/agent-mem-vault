@@ -82,12 +82,10 @@ def test_the_dashboard_is_created_with_the_documented_bases_views(store, vault):
     assert set(base) == {"filters", "views"}
     assert base["filters"] == {"and": ['note["agent-written"] == true']}
     assert [(view["type"], view["name"]) for view in base["views"]] == [
-        ("table", "Pending handoffs"),
         ("table", "Decisions and risks"),
         ("table", "All records"),
     ]
-    pending, decisions, everything = base["views"]
-    assert pending["filters"] == {"and": ['note.kind == "handoff"', "note.read == false"]}
+    decisions, everything = base["views"]
     assert decisions["filters"] == {
         "and": [{"or": ['note.kind == "decision"', 'note.kind == "risk"']}, 'note.validity == "valid"']
     }

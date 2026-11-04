@@ -19,12 +19,6 @@ generated: true
 
 - [[project-harbor-api/risk/2026-03-08-migration-script-locks-the-orders-table-728f9c30|Migration script locks the orders table]] (2026-03-08)
 
-## handoff
-
-- [[project-harbor-api/handoff/2026-03-10-handoff-to-codex-3ea7ecc4|Handoff to codex]] (2026-03-10)
-- [[project-harbor-api/handoff/2026-03-09-handoff-to-claude-code-1a7b9a54|Handoff to claude-code]] (2026-03-09)
-- [[project-harbor-api/handoff/2026-03-09-handoff-to-codex-ae3ba645|Handoff to codex]] (2026-03-09)
-
 ## snapshot
 
-- [[project-harbor-api/snapshot/2026-03-10-harbor-api-state-after-the-postgresql-move-9f04bcfc|harbor-api state after the PostgreSQL move]] (2026-03-10)
+- [[project-harbor-api/snapshot/2026-03-10-harbor-api-state-after-the-postgresql-move-ae3ba645|harbor-api state after the PostgreSQL move]] (2026-03-10)

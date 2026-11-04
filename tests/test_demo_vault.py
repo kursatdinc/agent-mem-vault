@@ -19,21 +19,17 @@ def test_committed_demo_vault_parses_without_issues():
 
     assert scan.issues == []
     counts = {kind: sum(record.kind == kind for record in scan.records) for kind in {r.kind for r in scan.records}}
-    assert counts == {"decision": 5, "handoff": 4, "note": 1, "risk": 2, "snapshot": 2}
+    assert counts == {"decision": 5, "note": 1, "risk": 2, "snapshot": 2}
+    assert not list(DEMO.glob("*/handoff"))
 
 
-def test_demo_vault_shows_supersedes_chain_and_handoff_lifecycle():
-    all_records = _scan().records
-    records = {record.title: record for record in all_records if record.kind != "handoff"}
+def test_demo_vault_shows_supersedes_chain_and_a_rejected_idea():
+    records = {record.title: record for record in _scan().records}
 
     assert records["Use SQLite for the first release"].meta["superseded_by"].endswith("-234bc139]]")
     assert records["Move order storage to PostgreSQL"].meta["superseded_by"].endswith("-eb0b3836]]")
     assert "superseded_by" not in records["Pin PostgreSQL 16 in CI and production"].meta
     assert records["Cache order lookups in process memory"].meta["validity"] == "rejected"
-    handoffs = [record for record in all_records if record.kind == "handoff"]
-    pending = [record for record in handoffs if record.pending]
-    superseded = [record for record in handoffs if record.meta.get("superseded_by")]
-    assert len(pending) == 2 and len(superseded) == 1
 
 
 def test_demo_vault_has_no_unresolved_links():

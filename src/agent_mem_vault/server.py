@@ -31,11 +31,9 @@ Supersedes = Annotated[
     Field(max_length=INPUT_LIMITS["tags"], description="Optional ids of records this one supersedes"),
 ]
 OptionalAgent = Annotated[str | None, Field(max_length=INPUT_LIMITS["agent"], description="Optional agent filter")]
-ItemType = Annotated[Literal["context", "handoff"] | None, Field(description="Optional item type filter")]
 IncludePrivate = Annotated[
     bool, Field(description="Include private records; hidden by default while the visibility feature is on")
 ]
-HandoffStatus = Literal["all", "pending", "read"]
 Visibility = Literal["public", "internal", "private"]
 Validity = Literal["valid", "rejected"]
 
@@ -105,25 +103,6 @@ def create_server(store: Store) -> MCPServer:
         )
         return f"Memory saved with ID: {record.id}"
 
-    @tool("create_handoff", "Create a structured handoff for another MCP-compatible agent.")
-    def create_handoff(
-        to: _text("agent", "Destination agent, for example: claude-code, codex, assistant-b"),
-        summary: _text("title", "Summary of what happened and what should continue"),
-        context: _text("content", "Full context needed to continue the work"),
-        namespace: Namespace = None,
-        supersedes: Supersedes = None,
-    ) -> str:
-        record = store.create_handoff(to, summary, context, namespace, supersedes)
-        return f"Handoff created for {to}. ID: {record.id}"
-
-    @tool("read_handoff", "Read the next pending handoff for this agent and mark it as read.")
-    def read_handoff(
-        agent: _text("agent", "Current agent name, for example: claude-code, codex, assistant-b"),
-        namespace: Namespace = None,
-    ) -> str:
-        record = store.read_handoff(agent, namespace)
-        return record.content if record else "No pending handoff."
-
     @tool("read_latest_context", "Read the most recent saved context, optionally filtered by agent.")
     def read_latest_context(
         namespace: Namespace = None, agent: OptionalAgent = None, include_private: IncludePrivate = False
@@ -133,34 +112,29 @@ def create_server(store: Store) -> MCPServer:
             return "No context found."
         return f"**{record.title}** - {record.agent} - {format_timestamp(record.created)}\n\n{record.content}"
 
-    @tool("list_contexts", "List recent contexts and handoffs.")
+    @tool("list_contexts", "List recent memory records, newest first.")
     def list_contexts(
         namespace: Namespace = None,
         agent: OptionalAgent = None,
         tags: Tags = None,
-        type: ItemType = None,
         kind: FilterKind = None,
         limit: Annotated[float | None, Field(description="Maximum number of items to list, default: 10")] = None,
         include_private: IncludePrivate = False,
     ) -> str:
-        records = store.list_contexts(namespace, agent, tags, type, kind, limit, include_private)
+        records = store.list_contexts(namespace, agent, tags, kind, limit, include_private)
         return format_records(records, store.visibility_filter) if records else "No saved context yet."
 
-    @tool("search_memory", "Search saved contexts and handoffs by text and filters.")
+    @tool("search_memory", "Search saved memory by text and filters.")
     def search_memory(
         namespace: Namespace = None,
         query: _optional_text("content", "Optional case-insensitive text query") = None,
         agent: OptionalAgent = None,
         tags: Tags = None,
-        type: ItemType = None,
         kind: FilterKind = None,
-        handoffStatus: Annotated[HandoffStatus | None, Field(description="Optional status filter for handoffs")] = None,
         limit: Annotated[float | None, Field(description="Maximum number of items to return, default: 10")] = None,
         include_private: IncludePrivate = False,
     ) -> str:
-        records = store.search_memory(
-            namespace, query, agent, tags, type, kind, handoffStatus or "all", limit, include_private
-        )
+        records = store.search_memory(namespace, query, agent, tags, kind, limit, include_private)
         return format_records(records, store.visibility_filter) if records else "No matching memory found."
 
     @tool("create_snapshot", "Save a durable snapshot summary for a namespace.")
@@ -181,37 +155,6 @@ def create_server(store: Store) -> MCPServer:
         ] = None,
     ) -> str:
         return format_brief(store.get_project_brief(namespace, limit))
-
-    @tool("list_handoffs", "List handoffs, optionally filtered by destination agent and status.")
-    def list_handoffs(
-        namespace: Namespace = None,
-        agent: Annotated[
-            str | None,
-            Field(max_length=INPUT_LIMITS["agent"], description="Optional destination agent filter"),
-        ] = None,
-        status: Annotated[HandoffStatus | None, Field(description="Optional handoff status filter")] = None,
-        limit: Annotated[float | None, Field(description="Maximum number of handoffs to list, default: 10")] = None,
-    ) -> str:
-        records = store.list_handoffs(namespace, agent, status or "all", limit)
-        return format_records(records) if records else "No handoffs found."
-
-    @tool("peek_handoff", "Read the next pending handoff for this agent without marking it as read.")
-    def peek_handoff(
-        agent: _text("agent", "Current agent name"),
-        namespace: Namespace = None,
-    ) -> str:
-        record = store.peek_handoff(agent, namespace)
-        return record.content if record else "No pending handoff."
-
-    @tool("ack_handoff", "Mark a handoff as read by ID.")
-    def ack_handoff(id: _text("content", "Handoff ID"), namespace: Namespace = None) -> str:
-        record = store.ack_handoff(id, namespace)
-        return f"Handoff marked as read. ID: {record.id}" if record else "Handoff not found."
-
-    @tool("reopen_handoff", "Mark a read handoff as pending again by ID.")
-    def reopen_handoff(id: _text("content", "Handoff ID"), namespace: Namespace = None) -> str:
-        record = store.reopen_handoff(id, namespace)
-        return f"Handoff reopened. ID: {record.id}" if record else "Handoff not found."
 
     @tool(
         "update_memory",

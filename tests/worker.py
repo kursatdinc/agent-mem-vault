@@ -25,9 +25,7 @@ def main() -> None:
             for index in range(100)
         ]
     else:
-        ids = []
-        while (record := store.read_handoff(agent="agent-b", namespace="stress")) is not None:
-            ids.append(record.id)
+        ids = [store.update_memory(arg, content=f"edit {index}").revision for index in range(50)]
     print(json.dumps(ids))
 
 

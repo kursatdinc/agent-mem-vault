@@ -57,25 +57,13 @@ def test_two_processes_saving_100_records_each_leave_200_parseable_findable_file
     assert Vault(vault_root).tmp_leftovers() == []
 
 
-def test_two_processes_reading_50_pending_handoffs_mark_each_exactly_once(tmp_path):
+def test_two_processes_updating_one_record_50_times_each_lose_no_revision(tmp_path):
     vault_root = tmp_path / "vault"
     vault_root.mkdir()
     store = Store(Vault(vault_root))
-    created = {
-        store.create_handoff(
-            to="agent-b", summary=f"Step {index}", context=f"Continue step {index}.", namespace="stress"
-        ).id
-        for index in range(50)
-    }
+    record = store.save_memory(agent="a", kind="decision", title="Shared", content="c", namespace="stress")
 
-    first, second = run_workers("read", vault_root, ["a", "b"])
+    first, second = run_workers("update", vault_root, [record.id, record.id])
 
-    assert len(first) + len(second) == 50
-    assert set(first) | set(second) == created
-    assert set(first) & set(second) == set()
-    handoffs = store.list_handoffs(namespace="stress", limit=100)
-    assert len(handoffs) == 50
-    for record in handoffs:
-        assert record.meta["read"] is True
-        assert record.revision == 2
-        assert record.meta["read_at"].endswith("Z")
+    assert sorted(first + second) == list(range(2, 102))
+    assert store.list_contexts(namespace="stress")[0].revision == 101
