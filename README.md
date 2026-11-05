@@ -14,9 +14,10 @@
 
 agent-mem-vault is an [MCP](https://modelcontextprotocol.io) server that turns an
 [Obsidian](https://obsidian.md) vault into the long-term memory of your coding agents. Claude Code,
-Codex and any other MCP client record decisions, risks, handoffs and project snapshots as notes in
-the vault. They read them back in the next session, in the next tool, on the next day. You see
-the same memory in Obsidian, and you can correct it there.
+Codex and any other MCP client record decisions, risks and project snapshots as notes in the vault,
+and keep two short cards per project: what the last session did, and which work threads are open.
+They read them back in the next session, in the next tool, on the next day. You see the same memory
+in Obsidian, and you can correct it there.
 
 ```mermaid
 flowchart LR
@@ -32,7 +33,7 @@ flowchart LR
 ## Try it in 60 seconds
 
 The repository ships a demo vault with synthetic records for two fictional projects: decisions
-with a supersedes chain, a rejected idea, an open risk, pending and superseded handoffs, snapshots,
+with a supersedes chain, a rejected idea, open risks, snapshots, companion cards with open threads,
 hub notes and the dashboard. You need [uv](https://docs.astral.sh/uv/) and, to see the graph,
 [Obsidian](https://obsidian.md).
 
@@ -40,14 +41,15 @@ hub notes and the dashboard. You need [uv](https://docs.astral.sh/uv/) and, to s
 git clone https://github.com/kursatdinc/agent-mem-vault && cd agent-mem-vault
 export AGENT_MEM_VAULT_VAULT="$PWD/examples/demo-vault"
 
-uv run agent-mem-vault doctor                                    # 14 records, 0 issues
-uv run agent-mem-vault handoffs --namespace project/harbor-api --status pending
+uv run agent-mem-vault doctor                                    # 10 records, 0 issues
+uv run agent-mem-vault list --namespace project/harbor-api --kind decision
 uv run agent-mem-vault search "backfill" --namespace project/harbor-api
 ```
 
 Then in Obsidian choose *Open folder as vault* and pick `examples/demo-vault`. Open the graph
-view to see the decision chain, and `_dashboards/memory.base` for pending handoffs and open
-decisions and risks. Edit a note, run `doctor` again, and the change is picked up.
+view to see the decision chain, `_dashboards/memory.base` for the active decisions and risks, and
+`project-harbor-api/_companion/` for the open threads. Edit a note, run `doctor` again, and the
+change is picked up.
 
 ## Install
 
@@ -80,8 +82,8 @@ AGENT_MEM_VAULT_VAULT="$HOME/agent-memory" uvx agent-mem-vault doctor
 To run the development version straight from GitHub, replace `uvx agent-mem-vault` with
 `uvx --from git+https://github.com/kursatdinc/agent-mem-vault agent-mem-vault`.
 
-Then ask your agent to "record this decision", "leave a handoff for Codex" or "what are the open
-risks in this project?". It uses the tools below. More snippets are in [examples/](https://github.com/kursatdinc/agent-mem-vault/blob/main/examples).
+Then ask your agent to "record this decision", "what did the last session leave open?" or "what are
+the open risks in this project?". It uses the tools below. More snippets are in [examples/](https://github.com/kursatdinc/agent-mem-vault/blob/main/examples).
 
 ## Why
 
@@ -96,25 +98,31 @@ risks in this project?". It uses the tools below. More snippets are in [examples
 
 **One memory for all your agents.**
 - Claude Code and Codex read and write the same records.
-- A handoff left by one agent is picked up by the next, with a real lifecycle: pending, read,
-  acknowledged.
-- A new handoff can supersede older ones, so the queue holds one live thread instead of a
-  growing pile.
+- Every session starts from the same brief: the last-session card, the open threads, the latest
+  snapshot and what was decided since.
+- Open work is one line per thread (`- <branch or topic>: <status>; next: <step>`), removed when
+  the thread is done, so the list stays short instead of growing into a pile.
+
+**Memory that stays current.**
+- Decisions are `accepted` or `superseded`; risks are `open`, `mitigated` or `resolved`, with an
+  optional review date.
+- Superseding a record closes it, and the brief says `Consolidation due` when the latest snapshot
+  is more than a week old.
 
 **Memory you can see.**
 - Every record is a note in your vault.
 - Obsidian's graph shows how decisions supersede each other and which records belong to which
   project.
-- A generated Bases dashboard lists pending handoffs, open decisions and risks.
+- A generated Bases dashboard lists the active decisions and risks.
 
 **Memory you can correct.**
 - Edit a note in Obsidian and the next query sees it.
 - Mark a decision rejected, with a reason, and it stops steering agents but stays on record.
 - Mark a record private and it stays out of automatic context.
 
-**Typed, not a transcript dump.** Records are `decision`, `risk`, `handoff`, `snapshot`, `note`,
-`assumption` and `task`, plus optional `receipt`. Agents can therefore ask precise questions:
-"open risks in this project", "what did we decide about caching", "what is waiting for me".
+**Typed, not a transcript dump.** Records are `decision`, `risk`, `snapshot`, `note`, `assumption`
+and `task`, plus optional `receipt`. Agents can therefore ask precise questions: "open risks in this
+project", "what did we decide about caching", "what is still open".
 
 **Yours.** Memory is plain Markdown in a folder you own. Put the vault in git and you get a full
 audit trail for free. Everything works offline, and Obsidian does not need to be open.
@@ -127,7 +135,7 @@ audit trail for free. Everything works offline, and Obsidian does not need to be
 | Obsidian has to be running | No | Yes: the server runs inside Obsidian | Not applicable |
 | Needs an LLM or embedding API key | No | No | Yes, per its README (OpenAI models by default) |
 | Readable and editable as notes, with graph and backlinks | Yes, in Obsidian | Yes | Not stored as notes |
-| Memory-specific schema: kinds, supersedes, handoff lifecycle | Yes | No: general vault access | Memories |
+| Memory-specific schema: kinds, supersedes, decision and risk lifecycle | Yes | No: general vault access | Memories |
 | Hand edits are protected by revision checks | Yes | Not applicable | Not applicable |
 
 Notes: the other columns summarize each project's public README; check their docs for current
@@ -140,12 +148,14 @@ related memories by meaning, while this project matches stemmed keywords in titl
 | Group | Tools |
 |---|---|
 | Write | `save_memory`, `save_context`, `create_snapshot`, `update_memory` |
-| Handoffs | `create_handoff`, `read_handoff`, `peek_handoff`, `ack_handoff`, `reopen_handoff`, `list_handoffs` |
 | Read | `get_project_brief`, `search_memory`, `list_contexts`, `read_latest_context`, `get_links` |
+| Companion (on by default) | `get_companion`, `update_companion` |
 | Health | `list_issues` |
-| Optional | `write_receipt` (receipts), `get_companion`, `update_companion` (companion) |
+| Optional | `write_receipt` (receipts) |
 
-- Records are grouped by namespace, usually `project/<repo>`.
+- Records are grouped by namespace. Without one, a call uses `project/<git root name>` of the
+  directory the server runs in.
+- Every listing line ends with `id <8 characters>`, and every id parameter takes that prefix.
 - Free-text search is stemmed, so "caching" finds "cache" and "cached".
 - Memory content is written in English.
 
@@ -158,12 +168,13 @@ Every parameter is documented in the
 agent-memory/                         # your Obsidian vault
 ├── project-harbor-api/
 │   ├── project-harbor-api.md         # generated hub: every record of the project
+│   ├── _companion/last-session.md    # what the last session did, what is unverified, next step
+│   ├── _companion/threads.md         # one line per open work thread
 │   ├── decision/2026-03-06-move-order-storage-to-postgresql-234bc139.md
-│   ├── risk/2026-03-08-migration-script-locks-the-orders-table-728f9c30.md
-│   └── handoff/2026-03-10-handoff-to-codex-3ea7ecc4.md
+│   └── risk/2026-03-08-migration-script-locks-the-orders-table-728f9c30.md
 ├── project-lantern-mobile/
 │   └── ...
-└── _dashboards/memory.base           # pending handoffs, decisions and risks, all records
+└── _dashboards/memory.base           # active decisions and risks, all records
 ```
 
 ```markdown
@@ -179,7 +190,7 @@ revision: 2
 visibility: internal
 validity: valid
 tags: [storage]
-status: accepted
+status: superseded
 supersedes: ['[[project-harbor-api/decision/2026-03-02-use-sqlite-for-the-first-release-d61740a1]]']
 superseded_by: '[[project-harbor-api/decision/2026-03-08-pin-postgresql-16-in-ci-and-production-eb0b3836]]'
 agent-written: true
@@ -200,12 +211,12 @@ A copy with comments is in [examples/config.yaml](https://github.com/kursatdinc/
 
 ```yaml
 vault: ~/agent-memory              # or AGENT_MEM_VAULT_VAULT
-default_namespace: default         # or AGENT_MEM_VAULT_DEFAULT_NAMESPACE
+default_namespace: default         # outside a git repo; or AGENT_MEM_VAULT_DEFAULT_NAMESPACE
 redact_secrets: true               # or AGENT_MEM_VAULT_REDACT_SECRETS
 features:
   visibility: true                 # private records stay out of automatic context
   receipts: false                  # immutable records of finished work, with file/commit refs
-  companion: false                 # per-project "last session" and "open threads" cards
+  companion: true                  # per-project "last session" and "open threads" cards
   hooks: false                     # session-start brief and stop nudge for Claude Code / Codex
   git_autocommit: false            # commit every change in the vault's git repo (never pushes)
 companion:
@@ -215,6 +226,13 @@ companion:
 With `hooks` on, `agent-mem-vault hook print-config --client claude|codex` prints the snippet
 to add to your client settings. The hook command must be on your `PATH`: run
 `uv tool install agent-mem-vault` once. The server never edits client settings itself.
+
+## Upgrading from 1.x
+
+2.0 removes handoffs. Run `agent-mem-vault migrate --dry-run`, then `agent-mem-vault migrate --apply`
+to move the old handoff notes to `<project>/_archive/handoffs/`, and re-register the hooks with
+`hook print-config`. The full list of changes and steps is in the
+[changelog](https://github.com/kursatdinc/agent-mem-vault/blob/main/CHANGELOG.md).
 
 ## Guarantees
 
@@ -232,7 +250,7 @@ to add to your client settings. The hook command must be on your `PATH`: run
 ## Documentation
 
 - [Wiki](https://github.com/kursatdinc/agent-mem-vault/wiki): getting started, configuration, tools
-  reference, record format, Obsidian integration, multi-agent handoffs, FAQ.
+  reference, record format, memory model, Obsidian integration, FAQ.
 - [docs/DESIGN.md](https://github.com/kursatdinc/agent-mem-vault/blob/main/docs/DESIGN.md): the design contract the implementation follows.
 - [CHANGELOG.md](https://github.com/kursatdinc/agent-mem-vault/blob/main/CHANGELOG.md) and [docs/RELEASING.md](https://github.com/kursatdinc/agent-mem-vault/blob/main/docs/RELEASING.md).
 - [Discussions](https://github.com/kursatdinc/agent-mem-vault/discussions) for questions and ideas,

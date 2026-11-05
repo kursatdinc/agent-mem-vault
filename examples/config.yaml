@@ -2,13 +2,13 @@
 # Every key is optional except the vault path, and environment variables win over this file.
 
 vault: ~/agent-memory              # or AGENT_MEM_VAULT_VAULT
-default_namespace: default         # or AGENT_MEM_VAULT_DEFAULT_NAMESPACE
+default_namespace: default         # outside a git repo; or AGENT_MEM_VAULT_DEFAULT_NAMESPACE
 redact_secrets: true               # or AGENT_MEM_VAULT_REDACT_SECRETS
 
 features:
   visibility: true                 # private records stay out of automatic context
   receipts: false                  # immutable records of finished work, with file and commit refs
-  companion: false                 # per-project "last session" and "open threads" cards
+  companion: true                  # per-project "last session" and "open threads" cards
   hooks: false                     # session-start brief and stop nudge for Claude Code and Codex
   git_autocommit: false            # commit every change in the vault's git repo (never pushes)
 

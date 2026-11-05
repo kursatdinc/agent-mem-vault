@@ -6,6 +6,71 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-05
+
+A new memory model: open work lives in two companion cards per project, decisions and risks have a
+lifecycle, and the brief says when memory needs consolidating. Handoffs are gone. This release breaks
+the 1.x tool surface; see *Upgrading from 1.x* below.
+
+### Removed
+
+- The handoff kind and its tools: `create_handoff`, `read_handoff`, `peek_handoff`, `list_handoffs`,
+  `ack_handoff` and `reopen_handoff`, the `handoffs` CLI command, the `handoffStatus` and `type`
+  filters of `search_memory` and `list_contexts` (and `--type` on the CLI), and the pending-handoffs
+  dashboard view. Open work goes in the `threads` companion card; to move work to another machine,
+  push a wip branch and let the synced vault carry the threads card.
+
+### Added
+
+- `agent-mem-vault migrate --dry-run | --apply` moves every legacy handoff of every namespace to
+  `<ns-dir>/_archive/handoffs/`, where reads never look, refreshes the hub notes, and commits the
+  move when the vault is a git work tree. `doctor` points at it while legacy handoffs remain.
+- Lifecycle statuses: a decision is `accepted` (default) or `superseded`; a risk is `open` (default),
+  `mitigated` or `resolved`. Other kinds keep a free-text status.
+- `review_by` (`YYYY-MM-DD`) on risks, in `save_memory` and `update_memory`.
+- `supersedes` on `update_memory` and `create_snapshot`. Superseding a decision sets it to
+  `superseded`, superseding a risk sets it to `resolved`.
+- Every id parameter (`update_memory`, `get_links`, `supersedes`) accepts a unique prefix of at least
+  eight characters.
+
+### Changed
+
+- `features.companion` is on by default. The threads card holds one line per open work thread,
+  `- <branch or topic>: <status>; next: <step>`; any other line is refused, and an empty string
+  clears the card.
+- `get_project_brief` returns, in order: the last-session card, the threads card, the latest snapshot
+  that is not superseded, private or rejected, the active records created after that snapshot (kind,
+  title and id), and a final `Consolidation due: <reason>` line when that snapshot is older than seven
+  days, or when there is no snapshot but there are active records. The header is
+  `**Project brief for <namespace>**`; its `limit` now caps the listed active records.
+- Listing, search and `read_latest_context` lines show the status and the first eight characters of
+  the id: `1. [decision: accepted] (alpha) Pick storage - planner - <time> - id 3f9a2c1e`. The
+  `context/` prefix is gone.
+- A tool call or CLI listing without a namespace uses `project/<git root name>` of the working
+  directory; `default_namespace` applies only outside a git work tree.
+- The stop hook asks the agent to update the companion cards, and to save a decision or risk only
+  when one was made or verified.
+- The dashboard's decisions view lists only active decisions and risks and shows `review_by`.
+
+### Upgrading from 1.x
+
+1. Upgrade the package: `uv tool upgrade agent-mem-vault` (or `uv tool install agent-mem-vault`), and
+   restart your agents so `uvx` starts the 2.0.0 server.
+2. Preview, then archive the old handoffs, on one machine:
+   `agent-mem-vault migrate --dry-run`, then `agent-mem-vault migrate --apply`. Sync the vault
+   repository to your other machines afterwards.
+3. Re-register the hooks: print the snippet with
+   `agent-mem-vault hook print-config --client claude` (and `--client codex`) and replace the old
+   entries in your client settings, so the new stop nudge is used.
+4. Update agent instructions that call handoff tools: read the brief at session start, keep
+   `last_session` and `threads` current with `update_companion`, and record a decision or risk only
+   when one was made or verified.
+5. Optional: delete `_dashboards/memory.base` to get the new dashboard on the next write; an existing
+   dashboard is never overwritten.
+
+Decisions saved with a 1.x status outside the new lifecycle (for example `proposed`) still load; only
+a new status is validated.
+
 ## [1.0.0] - 2026-10-29
 
 First stable release.
@@ -44,5 +109,6 @@ First stable release.
 - Release pipeline: pushing a `vX.Y.Z` tag builds the sdist and wheel, attaches them to a GitHub
   release, and publishes to PyPI through Trusted Publishing. See `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/kursatdinc/agent-mem-vault/releases/tag/v1.0.0

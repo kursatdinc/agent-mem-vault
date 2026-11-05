@@ -29,23 +29,23 @@ The graph's *Filters* and *Groups* take Obsidian search terms (the
 - **One color per project**: add a group per project with the query `path:project-harbor-api`, and
   another with `path:project-lantern-mobile`, and give each its own color.
 - **Color by kind**: groups with property searches such as `[kind:decision]`, `[kind:risk]` and
-  `[kind:handoff]`.
+  `[kind:snapshot]`.
 - **Focus on one project**: put `path:project-harbor-api` in the *Search files* filter.
 - **Spot rejected ideas**: a group with `[validity:rejected]`.
 
 ## The Bases dashboard
 
 `_dashboards/memory.base` is created the first time the server writes. It is an
-[Obsidian Bases](https://help.obsidian.md/bases) file with three table views over the records the
+[Obsidian Bases](https://help.obsidian.md/bases) file with two table views over the records the
 server wrote (`agent-written` is true):
 
 | View | Shows |
 |---|---|
-| Pending handoffs | handoffs with `read` false: name, destination, namespace, created |
-| Decisions and risks | valid decisions and risks, grouped by namespace, with kind and status |
+| Active decisions and risks | valid decisions and risks that are not `superseded` or `resolved`, grouped by namespace, with kind, status and `review_by` |
 | All records | every record except generated notes |
 
-The file is created only if absent. Edit it freely: add views, change filters. The server will not
+The file is created only if absent; a 1.x dashboard keeps its handoffs view until you delete the file
+and let the server write the new one. Edit it freely: add views, change filters. The server will not
 overwrite it. Opening a `.base` file needs a version of Obsidian that includes the Bases core plugin.
 
 ## Hand edits
@@ -56,7 +56,7 @@ Edit a record like any note. Common things to do:
   agents (it leaves the brief) and stays on file, and listings mark it `[rejected]`.
 - **Keep a record out of automatic context**: set `visibility: private`.
 - **Fix a wrong fact**: rewrite the text. Leave `id`, `kind` and `namespace` alone.
-- **Close a risk**: change `status`.
+- **Close a risk**: set `status: resolved` (or `mitigated`).
 
 What is safe:
 

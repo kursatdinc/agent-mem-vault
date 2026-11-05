@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-labelledby="title desc">
   <title id="title">agent-mem-vault</title>
-  <desc id="desc">Coding agents write decisions, risks and handoffs into an Obsidian vault as linked Markdown notes.</desc>
+  <desc id="desc">Coding agents write decisions, risks and open work threads into an Obsidian vault as linked Markdown notes.</desc>
   <style>
     .card { fill: #f6f5ff; stroke: #d9d6f5; }
     .name { fill: #1e1b3a; font: 700 54px ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
