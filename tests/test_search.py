@@ -79,10 +79,11 @@ def write_note(vault, name, frontmatter, content):
 
 
 def test_a_hand_written_date_is_aged_and_a_record_without_one_counts_as_old(store, vault):
-    write_note(vault, "dated", "created: 2025-10-28\n", "cache cache cache")
+    write_note(vault, "dated", "created: 2026-10-27\n", "cache cache")
     write_note(vault, "undated", "", "cache cache cache")
     store.save_context(agent="a", title="Fresh", content="cache cache", namespace="p")
 
+    # 2 x 1.0 fresh > 2 x 0.98 at 33 hours > 3 x 0.5 undated
     assert titles(store.search_memory(namespace="p", query="cache")) == ["Fresh", "Dated", "Undated"]
 
 
