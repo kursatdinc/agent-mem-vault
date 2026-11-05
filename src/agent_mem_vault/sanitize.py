@@ -15,6 +15,8 @@ INPUT_LIMITS = {
     "content": 200_000,
     "tag": 64,
     "tags": 20,
+    "alias": 200,
+    "aliases": 20,
     "refs": 50,
 }
 
@@ -46,23 +48,32 @@ def sanitize_optional_text(value: object, field: str, max_length: int) -> str | 
 
 
 def sanitize_tags(tags: list[str] | None) -> list[str]:
-    if tags is None:
+    return _sanitize_labels(tags, "tags", "tag")
+
+
+def sanitize_aliases(aliases: list[str] | None) -> list[str]:
+    return _sanitize_labels(aliases, "aliases", "alias")
+
+
+def _sanitize_labels(values: list[str] | None, field: str, item: str) -> list[str]:
+    """Strip, deduplicate and cap short labels: INPUT_LIMITS[item] bounds one, INPUT_LIMITS[field] the count."""
+    if values is None:
         return []
-    if not isinstance(tags, list):
-        raise TypeError("tags must be an array")
+    if not isinstance(values, list):
+        raise TypeError(f"{field} must be an array")
     seen: set[str] = set()
     sanitized: list[str] = []
-    for tag in tags:
-        if not isinstance(tag, str):
-            raise TypeError("tags must contain only strings")
-        cleaned = CONTROL_CHARS.sub("", tag).strip()
+    for value in values:
+        if not isinstance(value, str):
+            raise TypeError(f"{field} must contain only strings")
+        cleaned = CONTROL_CHARS.sub("", value).strip()
         if not cleaned or cleaned in seen:
             continue
-        if len(cleaned) > INPUT_LIMITS["tag"]:
-            raise ValueError(f"tag exceeds {INPUT_LIMITS['tag']} characters")
+        if len(cleaned) > INPUT_LIMITS[item]:
+            raise ValueError(f"{item} exceeds {INPUT_LIMITS[item]} characters")
         seen.add(cleaned)
         sanitized.append(cleaned)
-        if len(sanitized) >= INPUT_LIMITS["tags"]:
+        if len(sanitized) >= INPUT_LIMITS[field]:
             break
     return sanitized
 

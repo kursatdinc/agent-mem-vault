@@ -36,6 +36,14 @@ Supersedes = Annotated[
         "a superseded decision becomes superseded and a superseded risk resolved",
     ),
 ]
+Aliases = Annotated[
+    list[Annotated[str, Field(max_length=INPUT_LIMITS["alias"])]] | None,
+    Field(
+        max_length=INPUT_LIMITS["aliases"],
+        description="Optional other names the user uses for this subject (acronyms, old or product names); search "
+        "ranks an alias hit between a title and a content hit, and Obsidian resolves [[alias]] links",
+    ),
+]
 RecordId = Annotated[
     str,
     Field(
@@ -122,6 +130,7 @@ def create_server(store: Store) -> MCPServer:
         nextAction: _optional_text("title", "Optional next action") = None,
         tags: Tags = None,
         supersedes: Supersedes = None,
+        aliases: Aliases = None,
     ) -> str:
         record = store.save_memory(
             agent,
@@ -136,6 +145,7 @@ def create_server(store: Store) -> MCPServer:
             nextAction,
             tags,
             supersedes,
+            aliases,
         )
         return f"Memory saved with ID: {record.id}"
 
@@ -204,7 +214,7 @@ def create_server(store: Store) -> MCPServer:
 
     @tool(
         "update_memory",
-        "Update the title, content, tags, status, visibility or validity of an existing record by ID, "
+        "Update the title, content, tags, aliases, status, visibility or validity of an existing record by ID, "
         "or let it supersede other records. Pass expected_revision to detect changes made since the record was "
         "last read.",
     )
@@ -226,6 +236,7 @@ def create_server(store: Store) -> MCPServer:
         validity: Annotated[Validity | None, Field(description="New validity; rejected needs rejected_reason")] = None,
         rejected_reason: _optional_text("title", "Why the record is rejected") = None,
         supersedes: Supersedes = None,
+        aliases: Aliases = None,
     ) -> str:
         try:
             record = store.update_memory(
@@ -239,6 +250,7 @@ def create_server(store: Store) -> MCPServer:
                 validity,
                 rejected_reason,
                 supersedes,
+                aliases,
             )
         except RevisionConflict as conflict:
             return (

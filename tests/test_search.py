@@ -110,3 +110,20 @@ def test_a_query_without_word_characters_matches_nothing_and_no_query_lists_newe
     assert store.search_memory(namespace="p", query="?!") == []
     assert titles(store.search_memory(namespace="p")) == ["Two", "One"]
     assert titles(store.search_memory(namespace="p", limit=1)) == ["Two"]
+
+
+def test_an_alias_hit_matches_and_weighs_between_a_title_hit_and_a_content_hit(store):
+    store.save_memory(agent="a", kind="decision", title="Plain", content="adk adk", namespace="p")
+    store.save_memory(agent="a", kind="decision", title="ADK pin", content="x", namespace="p")
+    store.save_memory(agent="a", kind="decision", title="Runtime upgrade", content="x", aliases=["ADK"], namespace="p")
+    store.save_memory(agent="a", kind="decision", title="Unrelated", content="x", namespace="p")
+
+    assert titles(store.search_memory(namespace="p", query="adk")) == ["ADK pin", "Runtime upgrade", "Plain"]
+
+
+def test_a_hand_written_alias_string_is_searched_like_a_one_item_list(store, vault):
+    record = store.save_memory(agent="a", kind="decision", title="Runtime upgrade", content="x", namespace="p")
+    path = vault.root / record.path
+    path.write_text(path.read_text(encoding="utf-8").replace("title:", "aliases: google adk\ntitle:", 1), "utf-8")
+
+    assert titles(store.search_memory(namespace="p", query="google adk")) == ["Runtime upgrade"]

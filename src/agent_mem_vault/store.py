@@ -36,6 +36,7 @@ from agent_mem_vault.sanitize import (
     INPUT_LIMITS,
     normalize_limit,
     redact_secrets,
+    sanitize_aliases,
     sanitize_ids,
     sanitize_kind,
     sanitize_namespace,
@@ -68,6 +69,7 @@ class _MemoryChanges:
     title: str | None
     content: str | None
     tags: list[str] | None
+    aliases: list[str] | None
     status: str | None
     visibility: str | None
     validity: str | None
@@ -125,6 +127,7 @@ class Store:
         next_action: str | None = None,
         tags: list[str] | None = None,
         supersedes: list[str] | None = None,
+        aliases: list[str] | None = None,
     ) -> Record:
         safe_kind = sanitize_kind(kind)
         safe_status = _lifecycle_status(safe_kind, sanitize_optional_text(status, "status", INPUT_LIMITS["status"]))
@@ -136,6 +139,7 @@ class Store:
             "branch": sanitize_optional_text(branch, "branch", INPUT_LIMITS["file"]),
             "commit": sanitize_optional_text(commit, "commit", INPUT_LIMITS["file"]),
             "next_action": sanitize_optional_text(next_action, "nextAction", INPUT_LIMITS["title"]),
+            "aliases": sanitize_aliases(aliases),
         }
         return self._create(
             kind=safe_kind,
@@ -208,6 +212,7 @@ class Store:
         validity: str | None = None,
         rejected_reason: str | None = None,
         supersedes: list[str] | None = None,
+        aliases: list[str] | None = None,
     ) -> Record | None:
         """Change mutable fields of one record in place. Kind, namespace, id and file name never change.
 
@@ -215,7 +220,7 @@ class Store:
         """
         safe_id = sanitize_text(id, "id", INPUT_LIMITS["content"])
         supersede_ids = sanitize_ids(supersedes)
-        fields = (title, content, tags, status, visibility, validity, rejected_reason)
+        fields = (title, content, tags, aliases, status, visibility, validity, rejected_reason)
         if all(value is None for value in fields) and not supersede_ids:
             raise ValueError("nothing to update: pass at least one field to change")
         changes = _MemoryChanges(
@@ -224,6 +229,7 @@ class Store:
             if content is None
             else self._redacted(sanitize_text(content, "content", INPUT_LIMITS["content"])),
             tags=None if tags is None else self._redacted(sanitize_tags(tags)),
+            aliases=None if aliases is None else self._redacted(sanitize_aliases(aliases)),
             status=None if status is None else self._redacted(sanitize_text(status, "status", INPUT_LIMITS["status"])),
             visibility=_choice(visibility, "visibility", VISIBILITIES),
             validity=_choice(validity, "validity", VALIDITIES),
@@ -446,6 +452,10 @@ class Store:
             meta["tags"] = changes.tags
         elif changes.tags is not None:
             meta.pop("tags", None)
+        if changes.aliases:
+            meta["aliases"] = changes.aliases
+        elif changes.aliases is not None:
+            meta.pop("aliases", None)
         if changes.status is not None:
             meta["status"] = changes.status
         if changes.visibility is not None:

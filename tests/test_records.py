@@ -47,7 +47,7 @@ def test_render_then_parse_round_trips_timestamps_as_strings_and_keeps_unknown_k
         "created": "2026-10-28T09:13:05Z",
         "revision": 1,
         "read": False,
-        "aliases": ["Alt name"],
+        "css": ["wide"],
         "tags": ["a", "b"],
     }
 
@@ -57,7 +57,7 @@ def test_render_then_parse_round_trips_timestamps_as_strings_and_keeps_unknown_k
     assert record.meta == meta
     assert record.created == "2026-10-28T09:13:05Z"
     assert text.startswith("---\nid: abc\nkind: note\nnamespace: proj\ntitle: 'yes'\ncreated: 2026-10-28T09:13:05Z\n")
-    assert list(record.meta) == ["id", "kind", "namespace", "title", "created", "revision", "tags", "read", "aliases"]
+    assert list(record.meta) == ["id", "kind", "namespace", "title", "created", "revision", "tags", "read", "css"]
 
 
 def test_split_and_replace_related_touch_only_the_text_between_markers():

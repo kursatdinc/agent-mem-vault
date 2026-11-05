@@ -140,7 +140,7 @@ audit trail for free. Everything works offline, and Obsidian does not need to be
 Notes: the other columns summarize each project's public README; check their docs for current
 behavior. The Obsidian-plugin servers offer broader vault access (live metadata, the active file,
 the command palette) than this project, which is narrowly a memory store. Embedding services find
-related memories by meaning, while this project matches stemmed keywords in titles, content and tags.
+related memories by meaning, while this project matches stemmed keywords in titles, aliases, content and tags.
 
 ## Tools
 

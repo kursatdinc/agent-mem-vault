@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-05
+
+Search finds a record by the other names the user calls its subject.
+
+### Added
+
+- `aliases` on records: `save_memory` and `update_memory` (MCP tools and store) take a list of other
+  names for the subject, up to 20 of 200 characters each, written as Obsidian's `aliases` property;
+  an empty list on update removes it. A hand-written `aliases` string counts as one alias.
+- `search_memory` matches query stems in aliases and weighs an alias stem hit 2, between a title hit
+  (3) and a content hit (1).
+
 ## [2.1.0] - 2026-11-05
 
 The brief tells an open risk from a mitigated one, search and listings stop surfacing records that
@@ -194,7 +206,8 @@ First stable release.
 - Release pipeline: pushing a `vX.Y.Z` tag builds the sdist and wheel, attaches them to a GitHub
   release, and publishes to PyPI through Trusted Publishing. See `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v1.0.0...v2.0.0

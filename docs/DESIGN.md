@@ -159,8 +159,8 @@ agent-written: true
 - Each query walks the vault (skipping dot-directories), parses candidate records, filters, ranks
   and forgets. No cache on disk.
 - Free text: tokens are `\w+` lowercased and stemmed with PyStemmer `english` (in-process memo).
-  A record matches when every query stem occurs in title + content + tags. Text score = 3 x title stem
-  hits + content stem hits. The rank is the text score times an age weight
+  A record matches when every query stem occurs in title + aliases + content + tags. Text score = 3 x
+  title stem hits + 2 x alias stem hits + content stem hits. The rank is the text score times an age weight
   `0.5 + 0.5 x 2^(-age_days / 30)`, the age taken from `created` against the store clock: 1 for a new
   record, 0.75 at 30 days, 0.625 at 60, never below 0.5. A missing or unreadable `created` weighs 0.5,
   a date without a zone is read as UTC, and a `created` in the future weighs 1. Ties broken by newest
@@ -168,6 +168,9 @@ agent-written: true
 - Decision: the age weight multiplies the text score and stops at 0.5, so recency reorders matches of
   similar strength but a record with more than twice another's text score ranks above it however old
   it is: a year-old title hit (3 x 0.5) still beats a new single content hit (1).
+- Decision: `aliases` (Obsidian's own property, so `[[alias]]` links resolve in Obsidian too) carry the
+  other names the user uses for a subject, an acronym or an old product name. A lexical search misses
+  those without embeddings; an alias hit ranks between a title hit and a content hit.
 - Ordering for list operations: newest `created` first.
 - `search_memory` and `list_contexts` hide closed records unless `include_closed` is true
   (`--include-closed` on the CLI). Closed is the opposite of active in the brief: `superseded_by` is
@@ -186,11 +189,11 @@ The names, parameters and reply texts below are stable: agent instructions may d
 | Tool | Notes |
 |---|---|
 | `save_context` | kind `note` |
-| `save_memory` | kind, title, content, tags, status, relatedFiles, branch, commit, nextAction, + `supersedes` (ids) |
+| `save_memory` | kind, title, content, tags, aliases, status, relatedFiles, branch, commit, nextAction, + `supersedes` (ids) |
 | `create_snapshot` | kind `snapshot`, + `supersedes` (ids); a superseded snapshot drops out of the brief |
 | `get_project_brief` | see *Brief* below |
 | `read_latest_context`, `list_contexts`, `search_memory` | filters: agent, tags, kind, limit, include_private; `list_contexts` and `search_memory` also include_closed |
-| `update_memory` | id, expected_revision, any of title/content/tags/status/visibility/validity/rejected_reason, + `supersedes` (ids, appended to the record's list); kind, namespace and id are not parameters (extra arguments are ignored, so an update that passes only them fails with `nothing to update`); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
+| `update_memory` | id, expected_revision, any of title/content/tags/aliases/status/visibility/validity/rejected_reason, + `supersedes` (ids, appended to the record's list); kind, namespace and id are not parameters (extra arguments are ignored, so an update that passes only them fails with `nothing to update`); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
 | `get_links` | outgoing links and backlinks of a record |
 | `list_issues` | invalid record candidates with reason |
 | `write_receipt` | feature `receipts`: immutable kind `receipt` with refs (files, commits), harness, session |
