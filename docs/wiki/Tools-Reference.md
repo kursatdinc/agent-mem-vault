@@ -113,7 +113,8 @@ Returns `Memory updated. ID: <id>. Revision: <n>`, `Memory not found.`, or
 3. `## Since the snapshot` (or `## Active records` without a snapshot): active records created after
    that snapshot, newest first, as `- [<kind>: <status>] <title> - id <id8>` (`- [<kind>]` when the
    record has no status). Active means not superseded, not `superseded` or `resolved`, not private
-   and not rejected.
+   and not rejected. Records of the same second are ordered by path, and one from the snapshot's own
+   second counts as part of the snapshot, so every machine that syncs the vault shows the same brief.
 4. `Consolidation due: latest snapshot is <n> days old` when the snapshot is older than seven days,
    or `Consolidation due: no snapshot yet and <n> active records`.
 

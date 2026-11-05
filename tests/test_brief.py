@@ -1,4 +1,5 @@
-from datetime import timedelta
+import os
+from datetime import UTC, datetime, timedelta
 
 from agent_mem_vault.format import format_brief
 from agent_mem_vault.records import render_record
@@ -119,6 +120,30 @@ def test_the_limit_caps_the_listed_records_and_counts_the_rest(store):
 
     assert [line.split(" - ")[0] for line in lines[1:4]] == ["- [note] Note 3", "- [note] Note 2", "- ... and 2 more"]
     assert lines[-1] == "Consolidation due: no snapshot yet and 4 active records"
+
+
+def test_records_of_one_second_give_one_brief_whatever_their_file_times(store, vault):
+    store.clock = lambda: datetime(2026, 10, 28, 9, 0, 0, tzinfo=UTC)
+    state = snapshot(store)
+    folded = save(store, "note", "Same second as the snapshot")
+    store.clock = lambda: datetime(2026, 10, 28, 9, 0, 1, tzinfo=UTC)
+    apple = save(store, "decision", "Apple")
+    banana = save(store, "decision", "Banana")
+    records = [state, folded, apple, banana]
+    briefs = []
+    for order in (records, records[::-1]):
+        for second, record in enumerate(order, start=1):
+            os.utime(vault.root / record.path, ns=(second * 1_000_000_000, second * 1_000_000_000))
+        briefs.append(store.get_project_brief("alpha").content)
+
+    expected = (
+        f"## Snapshot: State (2026-10-28, id {state.id[:8]})\n"
+        "Snapshot body.\n\n"
+        "## Since the snapshot\n"
+        f"- [decision: accepted] Banana - id {banana.id[:8]}\n"
+        f"- [decision: accepted] Apple - id {apple.id[:8]}"
+    )
+    assert briefs == [expected, expected]
 
 
 def test_the_companion_cards_open_the_brief_before_the_snapshot(companion_store):
