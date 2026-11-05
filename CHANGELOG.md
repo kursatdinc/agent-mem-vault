@@ -6,6 +6,34 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-05
+
+The brief tells an open risk from a mitigated one, and search and listings stop surfacing records
+that were closed.
+
+### Removed
+
+- `review_by` on risks: the `review_by` parameter of `save_memory` and `update_memory` (MCP tools and
+  store), its date validation, and the `review_by` column of the dashboard's active decisions and
+  risks view. Nothing read it. A `review_by` already in a record file still loads and stays on
+  update, and a `review_by` argument from an older client is ignored.
+
+### Changed
+
+- Each active-record line of the brief shows the record's status, `- [<kind>: <status>] <title> - id
+  <id8>` (`- [<kind>]` when there is none), so `[risk: mitigated]` no longer reads like an open risk.
+- `search_memory` and `list_contexts` leave out closed records by default: a superseded decision, a
+  resolved risk, and any record with `superseded_by`. Pass `include_closed: true` (on the CLI,
+  `--include-closed`) to see them. `read_latest_context` and the brief are unchanged.
+
+### Upgrading from 2.0.x
+
+Upgrade the package; no migration is needed. Agent instructions that pass `review_by` keep working,
+but the date is no longer stored, so drop it from them. An existing `_dashboards/memory.base` keeps
+its `review_by` column, since the dashboard is written only when absent: delete the file to get the
+new one on the next write, or remove the `note.review_by` line yourself. To find an old decision
+that was superseded, search with `include_closed`.
+
 ## [2.0.1] - 2026-11-05
 
 Hubs now link everything the server writes, so no agent-mem-vault note is an orphan in Obsidian's
@@ -152,7 +180,8 @@ First stable release.
 - Release pipeline: pushing a `vX.Y.Z` tag builds the sdist and wheel, attaches them to a GitHub
   release, and publishes to PyPI through Trusted Publishing. See `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/kursatdinc/agent-mem-vault/releases/tag/v1.0.0

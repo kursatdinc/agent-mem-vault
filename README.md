@@ -155,7 +155,8 @@ related memories by meaning, while this project matches stemmed keywords in titl
 - Records are grouped by namespace. Without one, a call uses `project/<git root name>` of the
   directory the server runs in.
 - Every listing line ends with `id <8 characters>`, and every id parameter takes that prefix.
-- Free-text search is stemmed, so "caching" finds "cache" and "cached".
+- Free-text search is stemmed, so "caching" finds "cache" and "cached". Search and listings leave
+  out superseded and resolved records unless `include_closed` is passed.
 - Memory content is written in English.
 
 Every parameter is documented in the
