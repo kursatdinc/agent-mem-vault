@@ -12,7 +12,7 @@ Try the demo vault without touching your own memory:
 ```sh
 export AGENT_MEM_VAULT_VAULT="$PWD/examples/demo-vault"
 uvx agent-mem-vault doctor
-uvx agent-mem-vault handoffs --namespace project/harbor-api --status pending
+uvx agent-mem-vault list --namespace project/harbor-api --kind decision
 uvx agent-mem-vault search "backfill" --namespace project/harbor-api
 ```
 

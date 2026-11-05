@@ -61,7 +61,7 @@ is required (the maintainer is the code owner of every path, see
 ## Commit messages
 
 [Conventional Commits](https://www.conventionalcommits.org): `type: short summary` in the imperative
-mood, for example `fix: keep hand edits when a handoff is acknowledged`. Common types are `feat`,
+mood, for example `fix: keep hand edits when a decision is superseded`. Common types are `feat`,
 `fix`, `docs`, `refactor`, `test` and `chore`. Add a body when the why is not obvious from the diff.
 
 ## Releasing

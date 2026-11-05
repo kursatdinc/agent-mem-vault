@@ -45,9 +45,16 @@ the path. Fix the note in Obsidian and run `doctor` again. The server never modi
 
 ## What is a namespace? What should I use?
 
-A namespace groups records, usually one per repository: `project/<repo name>`. Agents pass it on
-each call. Records of other namespaces are never mixed in. If a call omits it, the
-`default_namespace` setting applies.
+A namespace groups records, usually one per repository: `project/<repo name>`. Records of other
+namespaces are never mixed in. If a call omits it, the server uses `project/<git root name>` of the
+directory it runs in; outside a git work tree the `default_namespace` setting applies.
+
+## Where did handoffs go?
+
+2.0 removed them. Open work is one line per thread in the threads companion card, and moving work to
+another machine is a pushed wip branch plus the synced card. Archive the old handoff notes with
+`agent-mem-vault migrate --dry-run` and then `--apply`; see
+[Memory Model](https://github.com/kursatdinc/agent-mem-vault/wiki/Memory-Model).
 
 ## Two agents write at the same time. Is that safe?
 
@@ -65,7 +72,7 @@ real credentials.
 
 Prefer marking it rejected with a reason (`validity: rejected`, `rejected_reason`). It leaves the
 brief and stops steering agents, and the record of why it was wrong stays. To replace a decision,
-save a new one that `supersedes` it.
+save a new one that `supersedes` it: the old one becomes `superseded`.
 
 ## The hook does not run.
 

@@ -11,12 +11,12 @@ YAML mapping. A commented copy is in
 
 ```yaml
 vault: ~/agent-memory              # required here or in the environment
-default_namespace: default
+default_namespace: default         # used outside a git work tree
 redact_secrets: true
 features:
   visibility: true
   receipts: false
-  companion: false
+  companion: true
   hooks: false
   git_autocommit: false
 companion:
@@ -28,11 +28,11 @@ companion:
 | Key | Environment variable | Default | Meaning |
 |---|---|---|---|
 | `vault` | `AGENT_MEM_VAULT_VAULT` | none, required | Path of the vault folder. `~` is expanded. |
-| `default_namespace` | `AGENT_MEM_VAULT_DEFAULT_NAMESPACE` | `default` | Namespace used when a tool call omits one. |
+| `default_namespace` | `AGENT_MEM_VAULT_DEFAULT_NAMESPACE` | `default` | Namespace for a call without one, when the server runs outside a git work tree. Inside one, such a call uses `project/<git root name>`. |
 | `redact_secrets` | `AGENT_MEM_VAULT_REDACT_SECRETS` | `true` | Redact token, key and password patterns before anything is written. Accepts `true` or `false`. |
 | `features.visibility` | none | `true` | `private` records stay out of the brief and of listings unless `include_private` is passed. |
 | `features.receipts` | none | `false` | Adds the `receipt` kind and the `write_receipt` tool. |
-| `features.companion` | none | `false` | Adds the `get_companion` and `update_companion` tools. |
+| `features.companion` | none | `true` | Adds the `get_companion` and `update_companion` tools and the cards at the top of the brief. |
 | `features.hooks` | none | `false` | Turns on the `hook session-start` and `hook stop` outputs. |
 | `features.git_autocommit` | none | `false` | Commit each change in the vault's git repository. Never pushes. |
 | `companion.max_chars` | none | `3000` | Size cap for each companion card. |
@@ -58,19 +58,21 @@ Immutable records of finished work: files and commits touched, plus optional har
 Created with `write_receipt`. `update_memory` and `supersedes` refuse receipts. Without the feature,
 `receipt/` folders are not scanned.
 
-### companion
+### companion (on by default)
 
 Two short cards per namespace, `last-session` and `threads`, stored under
 `<namespace>/_companion/`. `update_companion` replaces a card whole; a card over `max_chars` is
-rejected with a request to compact it, and nothing is written. `get_project_brief` appends the
-last-session card.
+rejected with a request to compact it, and nothing is written. The threads card takes one
+`- <branch or topic>: <status>; next: <step>` line per open thread. `get_project_brief` opens with
+both cards. See [Memory Model](https://github.com/kursatdinc/agent-mem-vault/wiki/Memory-Model).
 
 ### hooks
 
 `agent-mem-vault hook session-start --client claude|codex` prints the project brief (capped at 9000
-characters) for the namespace `project/<git root folder name>`. `hook stop` prints a nudge to record
-decisions, once per change in the working tree, and stays silent outside a git work tree or when
-the client says a stop hook is already active. With the feature off both print nothing and exit 0.
+characters, keeping a closing `Consolidation due` line) for the namespace
+`project/<git root folder name>`. `hook stop` prints a nudge to update the companion cards and to
+record a decision or risk only when one was made or verified, once per change in the working tree,
+and stays silent outside a git work tree or when the client says a stop hook is already active. With the feature off both print nothing and exit 0.
 `hook print-config` works either way. Every hook path exits 0 on error and logs the reason to stderr,
 so a hook never blocks your session.
 
@@ -85,8 +87,9 @@ like `avm: create decision 3f9a2c1e`. The server never pushes. The `.gitignore` 
 | Command | Purpose |
 |---|---|
 | `agent-mem-vault` | Run the MCP server over stdio. |
-| `doctor` | Check config, vault, record counts, issues and git state. |
-| `list`, `search QUERY`, `handoffs` | Human-readable views. Filters: `--namespace`, `--agent`, `--limit`, and for `list` and `search` also `--type`, `--kind`, `--tag`, `--include-private`; `handoffs` takes `--status`. |
+| `doctor` | Check config, vault, record counts, issues, legacy handoffs and git state. |
+| `list`, `search QUERY` | Human-readable views. Filters: `--namespace`, `--agent`, `--limit`, `--kind`, `--tag`, `--include-private`. |
+| `migrate --dry-run`, `migrate --apply` | Move 1.x handoff notes to `<namespace>/_archive/handoffs/`, refresh the hubs and commit when the vault is a git work tree. `--dry-run` only prints the moves. |
 | `hook ...` | Client hook entry points. |
 | `--version` | Print the version. |
 

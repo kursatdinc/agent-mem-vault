@@ -9,6 +9,20 @@ YAML frontmatter, editable by a human in Obsidian. The server keeps no database 
 index; every query reads the files. Obsidian's own index (graph view, backlinks, Bases) is the
 only persistent index.
 
+## Memory model
+The layers follow CoALA (working, episodic, semantic, procedural memory):
+- Working memory is the agent's context window. The server does not store it.
+- Episodic and prospective memory are two companion cards per namespace, `last_session` (what the
+  last session did, what is unverified, the next step) and `threads` (one line per open work
+  thread). Both are overwritten, never appended, and the SessionStart hook loads them every session.
+- Semantic memory is `decision` and `risk` records with a lifecycle, plus `snapshot` records that
+  summarize a namespace. Consolidation folds what accumulated since the last snapshot into a new one
+  and closes stale records through `supersedes`; every change is a vault git commit, so it can be
+  reverted.
+- Procedural memory is the agents' instruction files and skills, outside this server.
+- Not stored: production incidents (they belong in the issue tracker) and anything a client keeps
+  in its own memory. A risk is recorded only for a lasting constraint.
+
 ## Non-goals
 No embeddings, no SQLite, no network calls, no dependency on the Obsidian app being open, never
 writes `.obsidian/`, never launches Obsidian, never pushes git.
@@ -18,22 +32,25 @@ writes `.obsidian/`, never launches Obsidian, never pushes git.
 - Runtime dependencies: `mcp>=2.3,<3` (official SDK, `MCPServer`; expected failures are raised as `ToolError` so callers read the text), `PyYAML`, `PyStemmer`. Nothing else.
 - Dev: `uv`, `pytest`, `ruff`. Tests use temporary vaults with synthetic data only.
 - `agent-mem-vault` with no arguments runs the MCP server over stdio. Subcommands:
-  `doctor`, `list`, `search`, `handoffs`, `hook`.
+  `doctor`, `list`, `search`, `migrate`, `hook`.
 
 ## Configuration
 Precedence: built-in defaults < config file < environment variables.
 - Config file: `$AGENT_MEM_VAULT_CONFIG`, else `~/.config/agent-mem-vault/config.yaml`.
 - Env: `AGENT_MEM_VAULT_VAULT` (vault path), `AGENT_MEM_VAULT_DEFAULT_NAMESPACE`,
   `AGENT_MEM_VAULT_REDACT_SECRETS` (`true`/`false`).
+- A tool call or CLI listing without a namespace uses `project/<basename of the git root>` of the
+  process's working directory (the rule the hooks use); `default_namespace` applies only outside a git
+  work tree.
 
 ```yaml
 vault: ~/path/to/vault          # required (or env)
-default_namespace: default
+default_namespace: default      # fallback outside a git work tree
 redact_secrets: true
-kinds: [note, decision, assumption, task, risk, handoff, snapshot]   # receipt added when enabled
+kinds: [note, decision, assumption, task, risk, snapshot]   # receipt added when enabled
 features:
   receipts: false
-  companion: false
+  companion: true
   visibility: true
   hooks: false
   git_autocommit: false
@@ -48,6 +65,7 @@ companion:
     <namespace-slug>.md             # generated hub note, links every record of the namespace
     _companion/last-session.md      # companion feature
     _companion/threads.md           # companion feature
+    _archive/handoffs/*.md          # 1.x handoffs moved by `migrate`; never read
     <kind>/<YYYY-MM-DD>-<title-slug>-<id8>.md
   _dashboards/memory.base           # generated only if absent
   .agent-mem-vault/              # server-private: lock file, tmp/ for atomic writes
@@ -58,7 +76,8 @@ companion:
 - `title-slug`: same rule on the title, cut to 48 characters. `id8`: first 8 hex chars of the id.
 - The filename is fixed at creation. Title edits never rename files.
 - A file is a record candidate only if it sits at `<ns-slug>/<kind>/*.md` with `<kind>` a known
-  kind. Everything else (user notes, hubs, dashboards, companion cards) is ignored by record reads.
+  kind. Everything else (user notes, hubs, dashboards, companion cards, the archive, and 1.x
+  `handoff/` folders) is ignored by record reads.
 - `.agent-mem-vault/` is added to the vault's `.gitignore` when the server creates it inside a
   git repository.
 
@@ -76,17 +95,14 @@ revision: 1
 visibility: internal         # public | internal | private
 validity: valid              # valid | rejected
 tags: [runtime, adk]
-status: accepted             # optional free text
+status: accepted             # decision: accepted | superseded; risk: open | mitigated | resolved; else free text
+review_by: 2026-12-01        # risks only, optional, YYYY-MM-DD
 related_files: ["[[...]]"]   # optional
 supersedes: ["[[project-harbor-api/decision/2026-09-02-old-a1b2c3d4]]"]   # optional
 superseded_by: "[[...]]"     # optional
 next_action: ...             # optional
 branch: ...                  # optional
 commit: ...                  # optional
-# handoff only:
-to: claude-code
-read: false
-read_at: 2026-10-28T10:00:00Z
 # rejected only:
 rejected_reason: ...
 agent-written: true
@@ -103,8 +119,12 @@ agent-written: true
 - Links are full vault-relative paths without `.md`. They go in frontmatter and in the generated
   Related block; the server rewrites only the text between the `avm:related` markers.
 - Memory content is always English. Tool descriptions say so; nothing detects language.
-- Handoff content has a fixed shape: `## Summary\n<summary>\n\n## Full Context\n<context>`,
-  title `Handoff to <to>`.
+- Lifecycle: a new decision defaults to `accepted` and a new risk to `open`. A status outside the
+  kind's states is refused on save and update; a hand-written legacy status still loads. Superseding
+  sets `superseded_by` on the old record and closes it: a decision becomes `superseded`, a risk
+  `resolved`; other kinds keep their status.
+- Ids: every id parameter takes the full id or a unique prefix of at least 8 characters; an
+  ambiguous prefix is an error naming the number of matches.
 
 ## Writes and concurrency
 - Every write takes an exclusive `fcntl.flock` on `<vault>/.agent-mem-vault/lock` (timeout 5 s,
@@ -112,8 +132,7 @@ agent-written: true
 - Files are written to `<vault>/.agent-mem-vault/tmp/` and moved into place with `os.replace`
   (atomic on one filesystem). Leftover tmp files at startup are incomplete writes: removed and
   logged to stderr.
-- Updates (read/ack/reopen a handoff, supersede marking, update_memory) re-read the file under the
-  lock, require `revision` to match the expected one when the caller passes `expected_revision`,
+- Updates (supersede marking, update_memory) re-read the file under the lock, require `revision` to match the expected one when the caller passes `expected_revision`,
   write `revision + 1`, and re-check the file hash immediately before `os.replace`; if a human
   changed it in between, retry once, then return a conflict. Nothing is overwritten silently.
 - After each write: regenerate the namespace hub `<namespace-slug>/<namespace-slug>.md`; create `_dashboards/memory.base` if
@@ -149,25 +168,42 @@ The names, parameters and reply texts below are stable: agent instructions may d
 | Tool | Notes |
 |---|---|
 | `save_context` | kind `note` |
-| `save_memory` | kind, title, content, tags, status, relatedFiles, branch, commit, nextAction, + `supersedes` (ids) |
-| `create_handoff` | namespace, to, summary, context, + `supersedes` (ids: those pending handoffs become read with `superseded_by`) |
-| `create_snapshot` | kind `snapshot` |
-| `get_project_brief` | latest snapshot, else the 10 most recent records; excludes private and rejected |
-| `read_handoff` | newest pending handoff for the agent, marks it read |
-| `peek_handoff`, `ack_handoff`, `reopen_handoff`, `list_handoffs` | as before |
-| `read_latest_context`, `list_contexts`, `search_memory` | as before; `type` is `handoff` for kind handoff, else `context` |
-| `update_memory` | new: id, expected_revision, any of title/content/tags/status/visibility/validity/rejected_reason; kind, namespace and id are not parameters (extra arguments are refused); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
-| `get_links` | new: outgoing links and backlinks of a record |
-| `list_issues` | new: invalid record candidates with reason |
+| `save_memory` | kind, title, content, tags, status, relatedFiles, branch, commit, nextAction, `review_by` (risks), + `supersedes` (ids) |
+| `create_snapshot` | kind `snapshot`, + `supersedes` (ids); a superseded snapshot drops out of the brief |
+| `get_project_brief` | see *Brief* below |
+| `read_latest_context`, `list_contexts`, `search_memory` | filters: agent, tags, kind, limit, include_private |
+| `update_memory` | id, expected_revision, any of title/content/tags/status/review_by/visibility/validity/rejected_reason, + `supersedes` (ids, appended to the record's list); kind, namespace and id are not parameters (extra arguments are refused); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
+| `get_links` | outgoing links and backlinks of a record |
+| `list_issues` | invalid record candidates with reason |
 | `write_receipt` | feature `receipts`: immutable kind `receipt` with refs (files, commits), harness, session |
-| `get_companion`, `update_companion` | feature `companion`: per-namespace last-session and threads cards, `max_chars` enforced (over the cap -> error asking the agent to compact) |
+| `get_companion`, `update_companion` | feature `companion` (on by default): per-namespace last-session and threads cards, `max_chars` enforced (over the cap -> error asking the agent to compact) |
+
+Every listing, search and `read_latest_context` line ends with `id <first 8 characters of the id>`, and
+listing lines carry the status in their bracket group: `1. [decision: accepted] (alpha) Pick storage -
+planner - <time> - id 3f9a2c1e`.
+
+### Brief
+`get_project_brief` returns `**Project brief for <namespace>**` and then, each part only when present:
+1. the last-session card (`## Last session`) and the threads card (`## Threads`), while the
+   companion feature is on;
+2. the latest snapshot that is not superseded, private or rejected
+   (`## Snapshot: <title> (<YYYY-MM-DD>, id <id8>)` and its content);
+3. the active records created after that snapshot, or all of them when there is none
+   (`## Since the snapshot` / `## Active records`), newest first, one `- [<kind>] <title> - id <id8>`
+   line each, at most `limit` (default 10) plus `- ... and <n> more`. Active means not a snapshot, no
+   `superseded_by`, status not `superseded` or `resolved`, not private, not rejected;
+4. `Consolidation due: latest snapshot is <n> days old` when that snapshot is older than seven days,
+   or `Consolidation due: no snapshot yet and <n> active records` when there is no snapshot but there
+   are active records.
+
+An empty namespace reads `No saved memory found for namespace: <namespace>`.
 
 Visibility (feature on): `private` records never appear in the brief and appear in search/list only
 with `include_private: true`. Validity: `rejected` records stay, are excluded from the brief and are
 marked in search output.
 
-- Decision: `features.visibility` is on by default (as the config example above shows); every other
-  feature is off. The optional `include_private` parameter exists on `list_contexts`, `search_memory`
+- Decision: `features.visibility` and `features.companion` are on by default (as the config example
+  above shows); every other feature is off. The optional `include_private` parameter exists on `list_contexts`, `search_memory`
   and `read_latest_context` in both states and only has an effect while the feature is on. The
   `[rejected]` mark sits inside the bracket group of a listing line (`[context/note [rejected]]`) and is
   printed only while the feature is on. `list` and `search` on the CLI take `--include-private`.
@@ -178,8 +214,12 @@ marked in search output.
   `save_memory`; it is only created by `write_receipt`.
 - Decision: the companion cap applies to each card separately (`last_session`, `threads`), measured after
   redaction, and an update replaces the whole card. If either card is over the cap nothing is written.
-  Cards carry `kind: companion` and `agent-written: true`; a file at a card path without
-  `kind: companion` is never overwritten. `get_project_brief` appends only the last-session card.
+  Every non-blank line of `threads` must read `- <branch or topic>: <status>; next: <step>`, and a
+  line is removed when its thread is done; an empty `threads` clears the card. Cards carry
+  `kind: companion` and `agent-written: true`; a file at a card path without `kind: companion` is
+  never overwritten.
+- Decision: there is no handoff kind. Open work lives in `threads`; moving work to another machine is a
+  wip branch plus the synced threads card.
 
 ## CLI
 - `doctor`: config, vault path, `.obsidian/` present, record count by kind, issues, tmp leftovers,
@@ -189,15 +229,24 @@ marked in search output.
   Decision: parity runs `obsidian unresolved verbose format=json` in the vault directory and expects a JSON
   list of entries with a link and its source files (the CLI docs do not pin the shape); anything else
   prints "output not understood" instead of failing.
-- `list`, `search`, `handoffs`: human-readable views of the same store functions.
+- `list`, `search`: human-readable views of the same store functions.
+- `migrate --dry-run | --apply`: moves every file in a 1.x `<ns-dir>/handoff/` folder to
+  `<ns-dir>/_archive/handoffs/` and prints each move. `--apply` takes the lock, rewrites links between
+  the moved files to their archive path, skips (and reports) a taken archive path, removes the emptied
+  `handoff/` folder, regenerates the hubs that exist, and commits all of it as
+  `avm: migrate <n> legacy handoffs` when the vault is a git work tree. `--dry-run` writes nothing.
+  `doctor` prints the number of legacy handoffs while any remain.
 - `hook session-start|stop --client claude|codex` (feature `hooks`): prints the hook payload
   (session-start: the project brief for the namespace derived from the git root basename as
-  `project/<basename>`; stop: a nudge to record decisions). `hook print-config --client ...` prints
+  `project/<basename>`, the cwd basename outside a git work tree; stop: a nudge to update the companion
+  cards, `threads` only when a thread opened or closed, and to record a decision or risk only when one
+  was made or verified). `hook print-config --client ...` prints
   the settings snippet to install; the CLI never edits client settings itself.
   Decision: both events do nothing (empty output, exit 0) while `features.hooks` is off; `print-config`
   works regardless. Output conventions: session-start prints
   `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ...}}` for Claude Code and
-  plain text for Codex, capped at 9000 characters (a truncated brief ends with `[brief truncated]`). The
+  plain text for Codex, capped at 9000 characters (a truncated brief ends with `[brief truncated]`,
+followed by the brief's `Consolidation due` line when it had one). The
   stop nudge is `{"decision": "block", "reason": ...}` for Claude Code and plain text for Codex, and is
   skipped when the input has `stop_hook_active: true`. The change signature (HEAD plus a hash of
   `git status --porcelain`) is stored per namespace in `<vault>/.agent-mem-vault/state/stop-<ns-slug>`;

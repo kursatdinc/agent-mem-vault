@@ -10,8 +10,9 @@ uvx agent-mem-vault
 ```
 
 agent-mem-vault is an [MCP](https://modelcontextprotocol.io) server. Claude Code, Codex and any
-other MCP client use it to record decisions, risks, handoffs and project snapshots as Markdown notes
-in an [Obsidian](https://obsidian.md) vault, and to read them back in later sessions. You see the same
+other MCP client use it to record decisions, risks and project snapshots as Markdown notes in an
+[Obsidian](https://obsidian.md) vault, to keep a last-session card and the open work threads of each
+project, and to read all of it back in later sessions. You see the same
 notes in Obsidian, with its graph, backlinks and Bases, and you can correct them there.
 
 ## Start here
@@ -23,7 +24,7 @@ notes in Obsidian, with its graph, backlinks and Bases, and you can correct them
 | Know exactly what each tool takes and returns | [Tools Reference](https://github.com/kursatdinc/agent-mem-vault/wiki/Tools-Reference) |
 | Understand or hand-edit a note | [Record Format](https://github.com/kursatdinc/agent-mem-vault/wiki/Record-Format) |
 | Use the graph and the dashboard | [Obsidian Integration](https://github.com/kursatdinc/agent-mem-vault/wiki/Obsidian-Integration) |
-| Pass work between agents | [Multi-Agent Handoffs](https://github.com/kursatdinc/agent-mem-vault/wiki/Multi-Agent-Handoffs) |
+| Understand cards, lifecycle and consolidation | [Memory Model](https://github.com/kursatdinc/agent-mem-vault/wiki/Memory-Model) |
 | Find a quick answer | [FAQ](https://github.com/kursatdinc/agent-mem-vault/wiki/FAQ) |
 
 ## The idea in four lines

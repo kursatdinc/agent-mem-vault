@@ -10,6 +10,7 @@ and what Obsidian shows as properties.
   <namespace-slug>/
     <namespace-slug>.md             generated hub note
     _companion/                     companion cards (feature companion)
+    _archive/handoffs/              1.x handoffs moved by `migrate`; never read
     <kind>/<YYYY-MM-DD>-<title-slug>-<id8>.md
   _dashboards/memory.base           generated dashboard
   .agent-mem-vault/              server-private: lock file and tmp/ for atomic writes
@@ -22,8 +23,8 @@ and what Obsidian shows as properties.
   characters of the id.
 - The file name is fixed when the record is created. Editing a title never renames the file.
 - A file counts as a record only if it sits at `<namespace-slug>/<kind>/*.md` with a known kind.
-  Everything else in the vault (your own notes, hubs, dashboards, companion cards) is ignored by the
-  record queries.
+  Everything else in the vault (your own notes, hubs, dashboards, companion cards, the archive) is
+  ignored by the record queries.
 - `.agent-mem-vault/` is added to the vault's `.gitignore` when the server creates it inside a git
   repository.
 
@@ -42,7 +43,7 @@ revision: 2
 visibility: internal
 validity: valid
 tags: [storage]
-status: accepted
+status: superseded
 supersedes: ['[[project-harbor-api/decision/2026-03-02-use-sqlite-for-the-first-release-d61740a1]]']
 superseded_by: '[[project-harbor-api/decision/2026-03-08-pin-postgresql-16-in-ci-and-production-eb0b3836]]'
 agent-written: true
@@ -61,19 +62,19 @@ The pilot grew to three workers, which SQLite cannot serve safely. PostgreSQL gi
 | Field | Meaning |
 |---|---|
 | `id` | UUID string, never changes. |
-| `kind` | `note`, `decision`, `assumption`, `task`, `risk`, `handoff`, `snapshot`, or `receipt` (feature). Must match the folder. |
+| `kind` | `note`, `decision`, `assumption`, `task`, `risk`, `snapshot`, or `receipt` (feature). Must match the folder. |
 | `namespace` | For example `project/harbor-api`. |
-| `agent` | Who wrote it. Handoffs use `handoff` here and carry the destination in `to`. |
+| `agent` | Who wrote it. |
 | `title` | Shown in listings and the graph. |
 | `created`, `updated` | UTC ISO 8601 with `Z`. |
 | `revision` | Starts at 1 and increases with every change. Used for conflict checks. |
 | `visibility` | `public`, `internal` (default) or `private`. |
 | `validity` | `valid` (default) or `rejected`. |
 | `tags` | List of strings. |
-| `status` | Optional free text, for example `open` or `accepted`. |
+| `status` | decision: `accepted` or `superseded`; risk: `open`, `mitigated` or `resolved`; other kinds: optional free text. |
+| `review_by` | Risks only, optional: `YYYY-MM-DD`. |
 | `related_files`, `branch`, `commit`, `next_action` | Optional workflow metadata. |
 | `supersedes`, `superseded_by` | Wikilinks to the records this one replaces, and the record that replaced it. |
-| `to`, `read`, `read_at` | Handoffs only: destination, whether it was read, and when. |
 | `rejected_reason` | Rejected records only. |
 | `refs`, `harness`, `session` | Receipts only. |
 | `agent-written` | `true` for records the server wrote. The dashboard filters on it. |
@@ -90,17 +91,11 @@ Link resolution follows Obsidian's rules: an exact vault-relative path, otherwis
 with the shortest path winning, otherwise frontmatter `aliases`. `#heading`, `|display` and a
 leading `!` are ignored.
 
-## Handoff body
+## Companion cards
 
-```markdown
-## Summary
-<summary>
-
-## Full Context
-<context>
-```
-
-The title is `Handoff to <to>`.
+`_companion/last-session.md` and `_companion/threads.md` carry `kind: companion`, the namespace, an
+`updated` timestamp and `agent-written: true`; the body is the card text. They are not records, and a
+file at one of those paths without `kind: companion` is never overwritten.
 
 ## Generated files
 

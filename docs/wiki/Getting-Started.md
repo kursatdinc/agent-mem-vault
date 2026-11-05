@@ -22,11 +22,11 @@ git clone https://github.com/kursatdinc/agent-mem-vault && cd agent-mem-vault
 export AGENT_MEM_VAULT_VAULT="$PWD/examples/demo-vault"
 
 uv run agent-mem-vault doctor
-uv run agent-mem-vault handoffs --namespace project/harbor-api --status pending
+uv run agent-mem-vault list --namespace project/harbor-api --kind decision
 uv run agent-mem-vault search "backfill" --namespace project/harbor-api
 ```
 
-`doctor` should report 14 records and 0 issues. Open `examples/demo-vault` in Obsidian
+`doctor` should report 10 records and 0 issues. Open `examples/demo-vault` in Obsidian
 (*Open folder as vault*) to see the graph and the dashboard.
 
 ## 2. Create your own vault
@@ -78,18 +78,20 @@ issues, leftover temporary files and the vault's git state.
 Ask your agent in plain language:
 
 - "Record this decision: we use PostgreSQL because ..."
-- "Leave a handoff for Codex about the migration."
+- "What did the last session leave open?"
 - "What are the open risks in this project?"
 - "What did we decide about caching?"
 
 The agent calls the tools in the
 [Tools Reference](https://github.com/kursatdinc/agent-mem-vault/wiki/Tools-Reference) and the notes
-appear in the vault. Records are grouped by namespace; the usual namespace is `project/<repo name>`.
+appear in the vault. Records are grouped by namespace; without one, a call uses `project/<repo name>`
+of the directory the agent works in. How the cards, the lifecycle and consolidation fit together is
+in [Memory Model](https://github.com/kursatdinc/agent-mem-vault/wiki/Memory-Model).
 
 ## Optional: session hooks
 
 With `features.hooks` on, Claude Code and Codex can load the project brief at session start and get a
-nudge to record decisions when a session stops. Install the command once, then print the snippet for
+nudge to update the companion cards when a session stops. Install the command once, then print the snippet for
 your client:
 
 ```sh
