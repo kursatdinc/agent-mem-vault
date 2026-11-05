@@ -23,3 +23,9 @@ generated: true
 ## snapshot
 
 - [[project-lantern-mobile/snapshot/2026-03-07-lantern-mobile-beta-status-3e957315|lantern-mobile beta status]] (2026-03-07)
+
+## companion
+
+- [[project-lantern-mobile/_companion/threads|threads]]
+
+Dashboard: [[_dashboards/memory.base|memory dashboard]]

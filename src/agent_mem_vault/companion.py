@@ -21,6 +21,11 @@ def card_relpath(namespace: str, card: str) -> str:
     return f"{namespace_slug(namespace)}/{COMPANION_DIR}/{CARD_FILES[card]}"
 
 
+def existing_cards(vault: Vault, namespace: str) -> list[str]:
+    """Paths of the namespace's card files that exist, in CARD_FILES order."""
+    return [path for card in CARD_FILES if (vault.root / (path := card_relpath(namespace, card))).is_file()]
+
+
 def render_card(namespace: str, text: str, updated: str) -> str:
     meta = {"kind": "companion", "namespace": namespace, "updated": updated, "agent-written": True}
     return render_record(meta, text + "\n")

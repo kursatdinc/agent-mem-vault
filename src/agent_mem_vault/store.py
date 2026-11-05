@@ -13,6 +13,7 @@ from agent_mem_vault.companion import (
     card_relpath,
     card_sections,
     check_threads,
+    existing_cards,
     read_card,
     render_card,
 )
@@ -255,7 +256,7 @@ class Store:
     def update_companion(
         self, namespace: str | None = None, last_session: str | None = None, threads: str | None = None
     ) -> None:
-        """Replace the given companion cards of a namespace. Over the size cap nothing is written."""
+        """Replace the given companion cards of a namespace and refresh its hub. Over the cap nothing is written."""
         limit = self._companion_limit()
         if last_session is None and threads is None:
             raise ValueError("nothing to update: pass last_session or threads")
@@ -283,6 +284,7 @@ class Store:
                 relpath = card_relpath(safe_namespace, card)
                 if self.vault.write_generated(relpath, render_card(safe_namespace, text, updated), OWNER_MARKER):
                     touched.append(relpath)
+            touched += self.refresh_generated(safe_namespace)
             if self.git_autocommit and touched:
                 git.autocommit(self.vault.root, touched, f"avm: update companion {namespace_slug(safe_namespace)}")
 
@@ -475,8 +477,8 @@ class Store:
             hub = hub_relpath(namespace)
             slug = namespace_slug(namespace)
             siblings = [r for r in self.vault.scan().records if namespace_slug(r.namespace) == slug]
-            self.vault.write_generated(hub, render_hub(namespace, siblings))
-            touched.append(hub)
+            if self.vault.write_generated(hub, render_hub(namespace, siblings, existing_cards(self.vault, namespace))):
+                touched.append(hub)
             if not (self.vault.root / DASHBOARD_RELPATH).exists():
                 self.vault.write_new(DASHBOARD_RELPATH, DASHBOARD)
                 touched.append(DASHBOARD_RELPATH)
