@@ -7,7 +7,14 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from agent_mem_vault.companion import format_companion
-from agent_mem_vault.format import format_brief, format_issues, format_links, format_records, format_timestamp
+from agent_mem_vault.format import (
+    format_brief,
+    format_issues,
+    format_links,
+    format_records,
+    format_timestamp,
+    short_id,
+)
 from agent_mem_vault.records import KINDS, RECEIPT_KIND
 from agent_mem_vault.sanitize import INPUT_LIMITS
 from agent_mem_vault.store import Store
@@ -142,7 +149,10 @@ def create_server(store: Store) -> MCPServer:
         record = store.get_last_context(namespace, agent, include_private)
         if record is None:
             return "No context found."
-        return f"**{record.title}** - {record.agent} - {format_timestamp(record.created)}\n\n{record.content}"
+        return (
+            f"**{record.title}** - {record.agent} - {format_timestamp(record.created)} - id {short_id(record)}"
+            f"\n\n{record.content}"
+        )
 
     @tool("list_contexts", "List recent memory records, newest first.")
     def list_contexts(

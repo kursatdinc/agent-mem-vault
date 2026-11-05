@@ -17,11 +17,16 @@ def format_timestamp(timestamp: str) -> str:
     return f"{moment.month}/{moment.day}/{moment.year}, {hour}:{moment.minute:02d}:{moment.second:02d} {meridiem}"
 
 
+def short_id(record: Record) -> str:
+    return record.id[:8]
+
+
 def format_record(record: Record, index: int, mark_rejected: bool = False) -> str:
+    status = f": {record.meta['status']}" if record.meta.get("status") else ""
     rejected = " [rejected]" if mark_rejected and record.meta.get("validity") == "rejected" else ""
     return (
-        f"{index + 1}. [{record.kind}{rejected}] ({record.namespace}) "
-        f"{record.title} - {record.agent} - {format_timestamp(record.created)}"
+        f"{index + 1}. [{record.kind}{status}{rejected}] ({record.namespace}) "
+        f"{record.title} - {record.agent} - {format_timestamp(record.created)} - id {short_id(record)}"
     )
 
 
