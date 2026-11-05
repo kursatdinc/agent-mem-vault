@@ -25,7 +25,6 @@ views:
       - file.name
       - note.kind
       - note.status
-      - note.review_by
       - note.created
   - type: table
     name: "All records"

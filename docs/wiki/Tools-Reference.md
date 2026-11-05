@@ -54,7 +54,6 @@ Save a structured record.
 | `content` | string | yes | |
 | `namespace` | string | no | |
 | `status` | string, max 100 | no | decision: `accepted` (default) or `superseded`; risk: `open` (default), `mitigated` or `resolved`; other kinds: free text. |
-| `review_by` | `YYYY-MM-DD` | no | Risks only: when to look at the risk again. |
 | `relatedFiles` | list of strings, each max 500 | no | |
 | `branch` | string, max 500 | no | |
 | `commit` | string, max 500 | no | |
@@ -89,7 +88,6 @@ Change fields of an existing record in place. Kind, namespace, id and file name 
 | `content` | string | no | Replaces the whole body text; the generated Related block is kept. |
 | `tags` | list of strings | no | Replaces all tags. |
 | `status` | string | no | Validated against the record's kind, as in `save_memory`. |
-| `review_by` | `YYYY-MM-DD` | no | Risks only. |
 | `visibility` | `public`, `internal`, `private` | no | |
 | `validity` | `valid`, `rejected` | no | `rejected` needs `rejected_reason`. |
 | `rejected_reason` | string | no | Allowed only when the resulting validity is `rejected`. |

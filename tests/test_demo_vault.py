@@ -38,7 +38,6 @@ def test_demo_vault_shows_supersedes_chain_lifecycle_statuses_and_a_rejected_ide
         "Pin PostgreSQL 16 in CI and production": "accepted",
         "Sync offline first, reconcile on reconnect": "accepted",
     }
-    assert records["Migration script locks the orders table"].meta["review_by"] == "2026-03-20"
     assert records["Cache order lookups in process memory"].meta["validity"] == "rejected"
 
 

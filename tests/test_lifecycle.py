@@ -3,7 +3,7 @@ import yaml
 
 from agent_mem_vault.generated import DASHBOARD_RELPATH
 from agent_mem_vault.records import render_record
-from agent_mem_vault.vault import RevisionConflict, VaultError
+from agent_mem_vault.vault import RevisionConflict, Vault, VaultError
 from mcp_session import call, run_session
 
 
@@ -68,31 +68,20 @@ def test_a_hand_written_legacy_status_does_not_block_other_updates(store, vault)
     assert (updated.title, updated.meta["status"]) == ("Renamed", "proposed")
 
 
-# Review date
+# Hand-written review date
 
 
-def test_a_risk_takes_a_review_date_written_as_a_plain_date_property(store, vault):
-    risk = save(store, "risk", review_by="2026-12-01")
+def test_a_hand_written_review_by_still_loads_and_survives_an_update_in_place(store, vault):
+    risk = save(store, "risk", "Lock time")
+    (vault.root / risk.path).write_text(
+        render_record({**risk.meta, "review_by": "2026-12-01"}, risk.body), encoding="utf-8"
+    )
 
-    assert risk.meta["review_by"] == "2026-12-01"
-    assert "status: open\nreview_by: 2026-12-01\n" in text_of(vault, risk)
-    assert store.update_memory(risk.id, review_by="2027-01-15").meta["review_by"] == "2027-01-15"
+    updated = store.update_memory(risk.id, status="mitigated")
 
-
-@pytest.mark.parametrize("value", ["2026-13-01", "2026-12-1", "next week", "2026-12-01T10:00:00Z"])
-def test_a_review_date_that_is_not_yyyy_mm_dd_is_refused(store, vault, value):
-    with pytest.raises(ValueError, match="review_by must be a date as YYYY-MM-DD"):
-        save(store, "risk", review_by=value)
-
-    assert vault.scan().records == []
-
-
-def test_a_review_date_is_only_allowed_on_risks(store):
-    with pytest.raises(ValueError, match="review_by is only allowed on risks"):
-        save(store, "decision", review_by="2026-12-01")
-    decision = save(store, "decision")
-    with pytest.raises(ValueError, match="review_by is only allowed on risks"):
-        store.update_memory(decision.id, review_by="2026-12-01")
+    assert reread(store, risk).meta["review_by"] == "2026-12-01"
+    assert updated.meta["status"] == "mitigated"
+    assert "status: mitigated\nreview_by: 2026-12-01\n" in text_of(vault, risk)
 
 
 # Supersedes
@@ -206,7 +195,7 @@ def test_an_ambiguous_prefix_is_refused_with_the_number_of_matches(store, vault)
 # Dashboard and tools
 
 
-def test_the_dashboard_lists_only_active_decisions_and_risks_with_their_review_date(store, vault):
+def test_the_dashboard_lists_only_active_decisions_and_risks(store, vault):
     save(store, "note")
 
     decisions = yaml.safe_load((vault.root / DASHBOARD_RELPATH).read_text(encoding="utf-8"))["views"][0]
@@ -220,7 +209,7 @@ def test_the_dashboard_lists_only_active_decisions_and_risks_with_their_review_d
             'note.status != "resolved"',
         ]
     }
-    assert decisions["order"] == ["file.name", "note.kind", "note.status", "note.review_by", "note.created"]
+    assert decisions["order"] == ["file.name", "note.kind", "note.status", "note.created"]
 
 
 def test_the_lifecycle_parameters_are_exposed_and_validated_over_stdio(tmp_path):
@@ -243,11 +232,15 @@ def test_the_lifecycle_parameters_are_exposed_and_validated_over_stdio(tmp_path)
 
     tools, bad, good, record_id = run_session(tmp_path, scenario)
 
-    assert "review_by" in tools["save_memory"].input_schema["properties"]
-    assert {"review_by", "supersedes"} <= set(tools["update_memory"].input_schema["properties"])
+    [risk] = Vault(tmp_path / "vault").scan().records
+    assert "review_by" not in tools["save_memory"].input_schema["properties"]
+    assert "review_by" not in tools["update_memory"].input_schema["properties"]
+    assert "supersedes" in tools["update_memory"].input_schema["properties"]
     assert "supersedes" in tools["create_snapshot"].input_schema["properties"]
     assert bad.is_error is True
     assert bad.content[0].text == (
         "Error executing tool update_memory: status of a risk must be one of: open, mitigated, resolved"
     )
     assert good == f"Memory updated. ID: {record_id}. Revision: 2"
+    assert risk.meta["status"] == "mitigated"
+    assert "review_by" not in risk.meta

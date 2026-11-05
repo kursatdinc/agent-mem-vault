@@ -44,9 +44,6 @@ RecordId = Annotated[
         description="Record ID, or a unique prefix of at least 8 characters",
     ),
 ]
-ReviewBy = Annotated[
-    str | None, Field(max_length=10, description="Optional date to review a risk again, YYYY-MM-DD; risks only")
-]
 OptionalAgent = Annotated[str | None, Field(max_length=INPUT_LIMITS["agent"], description="Optional agent filter")]
 IncludePrivate = Annotated[
     bool, Field(description="Include private records; hidden by default while the visibility feature is on")
@@ -118,7 +115,6 @@ def create_server(store: Store) -> MCPServer:
         nextAction: _optional_text("title", "Optional next action") = None,
         tags: Tags = None,
         supersedes: Supersedes = None,
-        review_by: ReviewBy = None,
     ) -> str:
         record = store.save_memory(
             agent,
@@ -133,7 +129,6 @@ def create_server(store: Store) -> MCPServer:
             nextAction,
             tags,
             supersedes,
-            review_by,
         )
         return f"Memory saved with ID: {record.id}"
 
@@ -200,7 +195,7 @@ def create_server(store: Store) -> MCPServer:
 
     @tool(
         "update_memory",
-        "Update the title, content, tags, status, review date, visibility or validity of an existing record by ID, "
+        "Update the title, content, tags, status, visibility or validity of an existing record by ID, "
         "or let it supersede other records. Pass expected_revision to detect changes made since the record was "
         "last read.",
     )
@@ -221,7 +216,6 @@ def create_server(store: Store) -> MCPServer:
         visibility: Annotated[Visibility | None, Field(description="New visibility")] = None,
         validity: Annotated[Validity | None, Field(description="New validity; rejected needs rejected_reason")] = None,
         rejected_reason: _optional_text("title", "Why the record is rejected") = None,
-        review_by: ReviewBy = None,
         supersedes: Supersedes = None,
     ) -> str:
         try:
@@ -235,7 +229,6 @@ def create_server(store: Store) -> MCPServer:
                 visibility,
                 validity,
                 rejected_reason,
-                review_by,
                 supersedes,
             )
         except RevisionConflict as conflict:
