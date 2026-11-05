@@ -62,7 +62,7 @@ companion:
 ```
 <vault>/
   <namespace-slug>/
-    <namespace-slug>.md             # generated hub note, links every record of the namespace
+    <namespace-slug>.md             # generated hub note: links the records, the cards and the dashboard
     _companion/last-session.md      # companion feature
     _companion/threads.md           # companion feature
     _archive/handoffs/*.md          # 1.x handoffs moved by `migrate`; never read
@@ -138,7 +138,13 @@ agent-written: true
 - After each write: regenerate the namespace hub `<namespace-slug>/<namespace-slug>.md`; create `_dashboards/memory.base` if
   absent; if `features.git_autocommit` and the vault is a git repo, commit the touched paths with
   message `avm: <op> <kind> <id8>` (never push). Hub, dashboard or git failures are logged to
-  stderr and never fail the write.
+  stderr and never fail the write. A companion card write regenerates the hub as well and commits it
+  with the card (`avm: update companion <ns-slug>`).
+- The hub lists the records grouped by kind, newest first, then a `## companion` section linking each
+  card file that exists (`[[<ns-slug>/_companion/threads|threads]]`), then the line
+  `Dashboard: [[_dashboards/memory.base|memory dashboard]]`, so no note the server writes is a graph
+  orphan. A namespace with no records and no cards gets no hub: an existing hub with `generated: true`
+  is removed, and its folder too once empty; any other file at the hub path is left alone.
 - Decision: the hub is named after its folder (`proj/proj.md`) because Obsidian's graph labels nodes by file
   name, so every project shows under its own name instead of a column of identical `_index` nodes.
 - Decision: the hub is skipped when unchanged (it holds no timestamps) and is never written over a file
@@ -233,9 +239,19 @@ marked in search output.
 - `migrate --dry-run | --apply`: moves every file in a 1.x `<ns-dir>/handoff/` folder to
   `<ns-dir>/_archive/handoffs/` and prints each move. `--apply` takes the lock, rewrites links between
   the moved files to their archive path, skips (and reports) a taken archive path, removes the emptied
-  `handoff/` folder, regenerates the hubs that exist, and commits all of it as
-  `avm: migrate <n> legacy handoffs` when the vault is a git work tree. `--dry-run` writes nothing.
-  `doctor` prints the number of legacy handoffs while any remain.
+  `handoff/` folder, rebuilds every hub as `rebuild-hubs` does (one command upgrades a 2.0.0 vault's
+  hubs), prints each touched hub file, and commits all of it as `avm: migrate <n> legacy handoffs`
+  (`avm: rebuild hubs` when nothing moved) when the vault is a git work tree. `--dry-run` writes
+  nothing. `doctor` prints the number of legacy handoffs while any remain.
+- `rebuild-hubs [SLUG ...]`: regenerates the hub of each given namespace folder slug, or of every
+  namespace folder (a top-level folder whose name is its own slug, plus the slug of every record's
+  namespace) when none is given, under the lock, and removes the hub of a namespace that has no records
+  and no cards as above. Prints `wrote <path>` or `removed <path>` per touched file, or
+  `Hubs are up to date.`; an unknown slug is reported on stderr and skipped, and the exit status is 0.
+  With `features.git_autocommit` and a git work tree the touched files are committed as
+  `avm: rebuild hubs`. It is the public entry point for scripts (for example a vault sync job); the
+  hub title takes the namespace of the folder's newest record, else the one its cards name.
+  Decision: a removed file that git never tracked is left out of an autocommit instead of failing it.
 - `hook session-start|stop --client claude|codex` (feature `hooks`): prints the hook payload
   (session-start: the project brief for the namespace derived from the git root basename as
   `project/<basename>`, the cwd basename outside a git work tree; stop: a nudge to update the companion

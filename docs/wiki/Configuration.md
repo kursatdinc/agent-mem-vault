@@ -89,7 +89,8 @@ like `avm: create decision 3f9a2c1e`. The server never pushes. The `.gitignore` 
 | `agent-mem-vault` | Run the MCP server over stdio. |
 | `doctor` | Check config, vault, record counts, issues, legacy handoffs and git state. |
 | `list`, `search QUERY` | Human-readable views. Filters: `--namespace`, `--agent`, `--limit`, `--kind`, `--tag`, `--include-private`. |
-| `migrate --dry-run`, `migrate --apply` | Move 1.x handoff notes to `<namespace>/_archive/handoffs/`, refresh the hubs and commit when the vault is a git work tree. `--dry-run` only prints the moves. |
+| `migrate --dry-run`, `migrate --apply` | Move 1.x handoff notes to `<namespace>/_archive/handoffs/`, then rebuild every hub, and commit when the vault is a git work tree. `--dry-run` only prints the moves. |
+| `rebuild-hubs [SLUG ...]` | Rebuild the generated hub of each given namespace folder (for example `project-harbor-api`), or of every one when no folder is given, and print one line per file it wrote or removed. A namespace with no records and no companion cards loses its generated hub, and its folder once empty. An unknown folder is reported on stderr and skipped; the exit status is 0. With `features.git_autocommit` the changes are committed as `avm: rebuild hubs`. Run it after deleting or moving notes by hand, or from a vault sync script. |
 | `hook ...` | Client hook entry points. |
 | `--version` | Print the version. |
 

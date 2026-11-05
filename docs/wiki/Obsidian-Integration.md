@@ -15,8 +15,9 @@ Records link to each other through wikilinks in their frontmatter and in a gener
 - A decision that supersedes another links to it, and the older one links forward with
   `superseded_by`. In the graph view a supersedes chain is a visible path.
 - Each project has a generated hub note, `<namespace-slug>/<namespace-slug>.md`, linking every record of
-  the project. It is named after its folder, so the graph labels it with the project name, and a
-  project shows up as a cluster around its hub.
+  the project, its companion cards and the dashboard. It is named after its folder, so the graph labels
+  it with the project name, and a project shows up as a cluster around its hub with no orphan notes.
+  After deleting or moving notes by hand, `agent-mem-vault rebuild-hubs` brings the hubs up to date.
 - The backlinks pane of a record shows what replaced it and what refers to it. The `get_links` tool
   returns the same information to an agent.
 

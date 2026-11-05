@@ -6,6 +6,41 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-05
+
+Hubs now link everything the server writes, so no agent-mem-vault note is an orphan in Obsidian's
+graph.
+
+### Added
+
+- `agent-mem-vault rebuild-hubs [SLUG ...]` rebuilds the hub of each given namespace folder, or of
+  every one, prints one line per file it wrote or removed, reports an unknown folder and skips it, and
+  commits with `features.git_autocommit`. Scripts such as a vault sync job call it instead of the
+  store's internal hub refresh.
+
+### Changed
+
+- The hub ends with a `## companion` section linking the namespace's existing companion cards and a
+  line linking `_dashboards/memory.base`.
+- Writing a companion card refreshes the namespace hub and commits it with the card, so a first card
+  is linked at once.
+- `migrate --apply` ends by rebuilding every hub and prints each touched hub file, so one command
+  upgrades a 2.0.0 vault's hubs; with no legacy handoffs left it still rebuilds them and commits the
+  result as `avm: rebuild hubs`.
+
+### Fixed
+
+- Companion cards and the dashboard showed as orphan nodes in the graph.
+- A namespace left with no records and no cards (for example after its handoffs were archived) kept
+  an empty hub; its generated hub is now removed, and its folder once empty. A note you wrote at the
+  hub path is never removed.
+- A git autocommit no longer fails when one of its paths was neither on disk nor tracked.
+
+### Upgrading from 2.0.0
+
+Upgrade the package, then run `agent-mem-vault migrate --apply` (or `agent-mem-vault rebuild-hubs`)
+once on one machine and sync the vault.
+
 ## [2.0.0] - 2026-11-05
 
 A new memory model: open work lives in two companion cards per project, decisions and risks have a
@@ -113,6 +148,7 @@ First stable release.
 - Release pipeline: pushing a `vX.Y.Z` tag builds the sdist and wheel, attaches them to a GitHub
   release, and publishes to PyPI through Trusted Publishing. See `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/kursatdinc/agent-mem-vault/releases/tag/v1.0.0
