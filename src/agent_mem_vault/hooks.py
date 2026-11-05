@@ -16,9 +16,10 @@ SESSION_START_LIMIT = 9000
 TRUNCATION_NOTE = "\n[brief truncated]"
 HOOK_TIMEOUT_SECONDS = 5
 STOP_NUDGE = (
-    "[agent-mem-vault] Work state changed since the last check. Before finishing, record durable decisions, "
-    "risks and next steps with the agent-mem-vault tools (save_memory with kind decision or risk, "
-    "create_handoff for a hand-over). If there is nothing durable to record, say so in one line and stop."
+    "[agent-mem-vault] Work state changed since the last check. Before finishing, update the companion cards "
+    "with update_companion: last_session (what this session did, what is unverified, the next step), and threads "
+    "when a work thread opened or closed. Record a decision or risk with save_memory only when one was made or "
+    "verified in this session. If nothing changed, say so in one line and stop."
 )
 CLIENT_SETTINGS_FILE = {"claude": "~/.claude/settings.json", "codex": "the hooks.json of your Codex setup"}
 
