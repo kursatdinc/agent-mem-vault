@@ -42,6 +42,7 @@ def test_tools_list_exposes_the_memory_tools_without_any_handoff_tool(tmp_path):
         "nextAction",
         "tags",
         "supersedes",
+        "review_by",
     }
     assert set(save_memory["required"]) == {"agent", "kind", "title", "content"}
     assert set(save_memory["properties"]["kind"]["enum"]) == {
@@ -66,6 +67,8 @@ def test_tools_list_exposes_the_memory_tools_without_any_handoff_tool(tmp_path):
         "visibility",
         "validity",
         "rejected_reason",
+        "review_by",
+        "supersedes",
     }
     assert update["required"] == ["id"]
     assert tools["get_links"].input_schema["required"] == ["id"]

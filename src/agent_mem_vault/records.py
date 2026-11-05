@@ -28,6 +28,7 @@ _KEY_ORDER = (
     "validity",
     "tags",
     "status",
+    "review_by",
     "related_files",
     "supersedes",
     "superseded_by",

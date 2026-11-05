@@ -1,7 +1,8 @@
+import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from agent_mem_vault import git
@@ -38,6 +39,10 @@ from agent_mem_vault.vault import Issue, RevisionConflict, Vault, VaultError, lo
 
 VISIBILITIES = ("public", "internal", "private")
 VALIDITIES = ("valid", "rejected")
+LIFECYCLES = {"decision": ("accepted", "superseded"), "risk": ("open", "mitigated", "resolved")}
+CLOSED_BY_SUPERSEDE = {"decision": "superseded", "risk": "resolved"}
+MIN_ID_PREFIX = 8
+_REVIEW_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 @dataclass(frozen=True)
@@ -54,6 +59,7 @@ class _MemoryChanges:
     content: str | None
     tags: list[str] | None
     status: str | None
+    review_by: str | None
     visibility: str | None
     validity: str | None
     rejected_reason: str | None
@@ -110,10 +116,15 @@ class Store:
         next_action: str | None = None,
         tags: list[str] | None = None,
         supersedes: list[str] | None = None,
+        review_by: str | None = None,
     ) -> Record:
         safe_kind = sanitize_kind(kind)
+        safe_status = _lifecycle_status(safe_kind, sanitize_optional_text(status, "status", INPUT_LIMITS["status"]))
+        if safe_status is None and safe_kind in LIFECYCLES:
+            safe_status = LIFECYCLES[safe_kind][0]
         fields = {
-            "status": sanitize_optional_text(status, "status", INPUT_LIMITS["status"]),
+            "status": safe_status,
+            "review_by": _review_date(safe_kind, review_by),
             "related_files": sanitize_related_files(related_files),
             "branch": sanitize_optional_text(branch, "branch", INPUT_LIMITS["file"]),
             "commit": sanitize_optional_text(commit, "commit", INPUT_LIMITS["file"]),
@@ -130,7 +141,14 @@ class Store:
             supersedes_ids=sanitize_ids(supersedes),
         )
 
-    def create_snapshot(self, agent: str, title: str, content: str, namespace: str | None = None) -> Record:
+    def create_snapshot(
+        self,
+        agent: str,
+        title: str,
+        content: str,
+        namespace: str | None = None,
+        supersedes: list[str] | None = None,
+    ) -> Record:
         return self._create(
             kind="snapshot",
             agent=sanitize_text(agent, "agent", INPUT_LIMITS["agent"]),
@@ -138,6 +156,7 @@ class Store:
             title=sanitize_text(title, "title", INPUT_LIMITS["title"]),
             content=sanitize_text(content, "content", INPUT_LIMITS["content"]),
             tags=["snapshot"],
+            supersedes_ids=sanitize_ids(supersedes),
         )
 
     def write_receipt(
@@ -181,10 +200,17 @@ class Store:
         visibility: str | None = None,
         validity: str | None = None,
         rejected_reason: str | None = None,
+        review_by: str | None = None,
+        supersedes: list[str] | None = None,
     ) -> Record | None:
-        """Change mutable fields of one record in place. Kind, namespace, id and file name never change."""
+        """Change mutable fields of one record in place. Kind, namespace, id and file name never change.
+
+        `supersedes` adds records this one replaces; they are closed the same way as on save.
+        """
         safe_id = sanitize_text(id, "id", INPUT_LIMITS["content"])
-        if all(value is None for value in (title, content, tags, status, visibility, validity, rejected_reason)):
+        supersede_ids = sanitize_ids(supersedes)
+        fields = (title, content, tags, status, visibility, validity, rejected_reason, review_by)
+        if all(value is None for value in fields) and not supersede_ids:
             raise ValueError("nothing to update: pass at least one field to change")
         changes = _MemoryChanges(
             title=None if title is None else self._redacted(sanitize_text(title, "title", INPUT_LIMITS["title"])),
@@ -193,6 +219,7 @@ class Store:
             else self._redacted(sanitize_text(content, "content", INPUT_LIMITS["content"])),
             tags=None if tags is None else self._redacted(sanitize_tags(tags)),
             status=None if status is None else self._redacted(sanitize_text(status, "status", INPUT_LIMITS["status"])),
+            review_by=review_by,
             visibility=_choice(visibility, "visibility", VISIBILITIES),
             validity=_choice(validity, "validity", VALIDITIES),
             rejected_reason=None
@@ -200,15 +227,20 @@ class Store:
             else self._redacted(sanitize_text(rejected_reason, "rejected_reason", INPUT_LIMITS["title"])),
         )
         with self.vault.lock():
-            target = next((record for record in self.vault.scan().records if record.id == safe_id), None)
+            target = _resolve(self.vault.scan().records, safe_id)
             if target is None:
                 return None
             if target.kind == RECEIPT_KIND:
                 raise VaultError("receipts are immutable and cannot be updated")
+            _lifecycle_status(target.kind, changes.status)
+            _review_date(target.kind, changes.review_by)
+            superseded = self._supersede_targets(supersede_ids, target.namespace, replacement_id=target.id)
             updated = self.vault.update_file(
-                target.path, lambda current: self._apply_changes(current, changes, expected_revision)
+                target.path, lambda current: self._apply_changes(current, changes, expected_revision, superseded)
             )
-            self._publish("update", updated)
+            for old in superseded:
+                self._mark_superseded(old, updated)
+            self._publish("update", updated, [old.path for old in superseded])
             return updated
 
     def update_companion(
@@ -248,8 +280,7 @@ class Store:
         return Companion(*(read_card(self.vault, safe_namespace, card) for card in CARD_FILES))
 
     def get_links(self, id: str) -> tuple[Record, Links] | None:
-        safe_id = sanitize_text(id, "id", INPUT_LIMITS["content"])
-        record = next((record for record in self.vault.scan().records if record.id == safe_id), None)
+        record = _resolve(self.vault.scan().records, sanitize_text(id, "id", INPUT_LIMITS["content"]))
         return None if record is None else (record, link_report(self.vault, record))
 
     def list_issues(self) -> list[Issue]:
@@ -360,7 +391,9 @@ class Store:
             and set(safe_tags) <= set(record.tags)
         ]
 
-    def _apply_changes(self, current: Record, changes: _MemoryChanges, expected_revision: int | None) -> str:
+    def _apply_changes(
+        self, current: Record, changes: _MemoryChanges, expected_revision: int | None, superseded: list[Record]
+    ) -> str:
         if expected_revision is not None and current.revision != expected_revision:
             raise RevisionConflict(expected_revision, current.revision)
         meta = dict(current.meta)
@@ -372,6 +405,8 @@ class Store:
             meta.pop("tags", None)
         if changes.status is not None:
             meta["status"] = changes.status
+        if changes.review_by is not None:
+            meta["review_by"] = changes.review_by
         if changes.visibility is not None:
             meta["visibility"] = changes.visibility
         reason = changes.rejected_reason if changes.rejected_reason is not None else meta.get("rejected_reason")
@@ -386,7 +421,16 @@ class Store:
             meta.pop("rejected_reason", None)
         if changes.validity is not None:
             meta["validity"] = changes.validity
-        body = None if changes.content is None else build_body(changes.content, current.related_lines)
+        related = current.related_lines
+        body = None
+        if superseded:
+            earlier = meta.get("supersedes")
+            earlier = earlier if isinstance(earlier, list) else [earlier] if earlier else []
+            meta["supersedes"] = [*earlier, *(wikilink(old.path) for old in superseded)]
+            related = [*related, *_supersedes_lines(superseded)]
+            body = replace_related(current.body, related)
+        if changes.content is not None:
+            body = build_body(changes.content, related)
         return self._revised(current, meta, body)
 
     def _publish(self, op: str, record: Record, also_touched: list[str] | None = None) -> None:
@@ -453,8 +497,8 @@ class Store:
             if targets:
                 meta["supersedes"] = [wikilink(target.path) for target in targets]
             meta["agent-written"] = True
-            related_lines = [f"- Supersedes {wikilink(target.path, target.title)}" for target in targets]
-            text = render_record(meta, build_body(self._redacted(content), [*related_lines, *(related or [])]))
+            related_lines = [*_supersedes_lines(targets), *(related or [])]
+            text = render_record(meta, build_body(self._redacted(content), related_lines))
             self.vault.write_new(relpath, text)
             record = parse_record(relpath, text, (self.vault.root / relpath).stat().st_mtime_ns, self.vault.kinds)
             for target in targets:
@@ -469,31 +513,77 @@ class Store:
             if not (self.vault.root / relpath).exists():
                 return record_id, relpath
 
-    def _supersede_targets(self, ids: list[str], namespace: str) -> list[Record]:
+    def _supersede_targets(self, ids: list[str], namespace: str, replacement_id: str | None = None) -> list[Record]:
         if not ids:
             return []
-        by_id = {record.id: record for record in self.vault.scan().records if record.namespace == namespace}
-        targets = []
+        candidates = [record for record in self.vault.scan().records if record.namespace == namespace]
+        targets: list[Record] = []
         for target_id in ids:
-            target = by_id.get(target_id)
+            target = _resolve(candidates, target_id)
             if target is None:
                 raise VaultError(f"Record not found in namespace {namespace}: {target_id}")
+            if target.id == replacement_id:
+                raise VaultError("A record cannot supersede itself")
             if target.kind == RECEIPT_KIND:
                 raise VaultError(f"Record is an immutable receipt: {target_id}")
             if target.meta.get("superseded_by"):
                 raise VaultError(f"Record is already superseded: {target_id}")
-            targets.append(target)
+            if all(found.id != target.id for found in targets):
+                targets.append(target)
         return targets
 
     def _mark_superseded(self, target: Record, replacement: Record) -> None:
         def rebuild(current: Record) -> str:
             meta = dict(current.meta)
             meta["superseded_by"] = wikilink(replacement.path)
+            if current.kind in CLOSED_BY_SUPERSEDE:
+                meta["status"] = CLOSED_BY_SUPERSEDE[current.kind]
             lines = [line for line in current.related_lines if not line.startswith("- Superseded by ")]
             lines.append(f"- Superseded by {wikilink(replacement.path, replacement.title)}")
             return self._revised(current, meta, replace_related(current.body, lines))
 
         self.vault.update_file(target.path, rebuild)
+
+
+def _resolve(records: list[Record], wanted: str) -> Record | None:
+    """The record with this id, or the only one whose id starts with a prefix of at least MIN_ID_PREFIX characters."""
+    exact = next((record for record in records if record.id == wanted), None)
+    if exact is not None or len(wanted) < MIN_ID_PREFIX:
+        return exact
+    matches = [record for record in records if record.id.startswith(wanted)]
+    if len(matches) > 1:
+        raise VaultError(f"id prefix {wanted} matches {len(matches)} records: pass more characters")
+    return matches[0] if matches else None
+
+
+def _supersedes_lines(targets: list[Record]) -> list[str]:
+    return [f"- Supersedes {wikilink(target.path, target.title)}" for target in targets]
+
+
+def _lifecycle_status(kind: str, status: str | None) -> str | None:
+    """Decisions and risks move through fixed states; every other kind keeps a free-text status."""
+    allowed = LIFECYCLES.get(kind)
+    if allowed is not None and status is not None and status not in allowed:
+        raise ValueError(f"status of a {kind} must be one of: {', '.join(allowed)}")
+    return status
+
+
+def _review_date(kind: str, value: str | None) -> str | None:
+    if value is None:
+        return None
+    if kind != "risk":
+        raise ValueError("review_by is only allowed on risks")
+    if not isinstance(value, str) or not _is_calendar_date(value):
+        raise ValueError("review_by must be a date as YYYY-MM-DD")
+    return value
+
+
+def _is_calendar_date(value: str) -> bool:
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return _REVIEW_DATE.fullmatch(value) is not None
 
 
 def _choice(value: str | None, field: str, allowed: tuple[str, ...]) -> str | None:
