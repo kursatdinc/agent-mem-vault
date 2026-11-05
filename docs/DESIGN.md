@@ -219,8 +219,9 @@ An empty namespace reads `No saved memory found for namespace: <namespace>`.
 
 - Decision: the brief never reads file times, which differ on each machine that syncs the vault, so
   every machine renders the same brief. Records of the same second are ordered by path, as in the hub,
-  and the latest snapshot is the first in that order. A record counts as after the snapshot only when
-  its `created` is later; one from the snapshot's own second counts as part of it.
+  and the latest snapshot is the first in that order. A record from the snapshot's own second is
+  listed after it: without file times it cannot be told whether it was written before or after the
+  snapshot, and listing one the snapshot already covers costs less than hiding one written after it.
 
 Visibility (feature on): `private` records never appear in the brief and appear in search/list only
 with `include_private: true`. Validity: `rejected` records stay, are excluded from the brief and are

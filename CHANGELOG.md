@@ -36,8 +36,8 @@ were closed, and search favours recent records.
 - The brief ordered records created in the same second, picked between snapshots of one second, and
   decided whether a record from the snapshot's second came after it by file modification time, which
   differs on each machine that syncs the vault, so two machines could show different briefs. It now
-  orders them by path, like the hub, and lists only records whose `created` is later than the
-  snapshot's.
+  orders them by path, like the hub, and lists a record from the snapshot's own second, so a record
+  saved right after a snapshot is not hidden.
 
 ### Upgrading from 2.0.x
 

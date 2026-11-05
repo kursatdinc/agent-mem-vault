@@ -122,14 +122,28 @@ def test_the_limit_caps_the_listed_records_and_counts_the_rest(store):
     assert lines[-1] == "Consolidation due: no snapshot yet and 4 active records"
 
 
-def test_records_of_one_second_give_one_brief_whatever_their_file_times(store, vault):
+def test_a_record_saved_in_the_snapshots_own_second_is_still_listed(store):
     store.clock = lambda: datetime(2026, 10, 28, 9, 0, 0, tzinfo=UTC)
     state = snapshot(store)
-    folded = save(store, "note", "Same second as the snapshot")
+    handoff = save(store, "task", "Hand off the review", status="open")
+
+    assert store.get_project_brief("alpha").content == (
+        f"## Snapshot: State (2026-10-28, id {state.id[:8]})\n"
+        "Snapshot body.\n\n"
+        "## Since the snapshot\n"
+        f"- [task: open] Hand off the review - id {handoff.id[:8]}"
+    )
+
+
+def test_records_of_one_second_give_one_brief_whatever_their_file_times(store, vault):
+    store.clock = lambda: datetime(2026, 10, 28, 9, 0, 0, tzinfo=UTC)
+    other = snapshot(store, "Other state", "Other body.")
+    state = snapshot(store)
+    same_second = save(store, "note", "Same second as the snapshot")
     store.clock = lambda: datetime(2026, 10, 28, 9, 0, 1, tzinfo=UTC)
     apple = save(store, "decision", "Apple")
     banana = save(store, "decision", "Banana")
-    records = [state, folded, apple, banana]
+    records = [other, state, same_second, apple, banana]
     briefs = []
     for order in (records, records[::-1]):
         for second, record in enumerate(order, start=1):
@@ -141,7 +155,8 @@ def test_records_of_one_second_give_one_brief_whatever_their_file_times(store, v
         "Snapshot body.\n\n"
         "## Since the snapshot\n"
         f"- [decision: accepted] Banana - id {banana.id[:8]}\n"
-        f"- [decision: accepted] Apple - id {apple.id[:8]}"
+        f"- [decision: accepted] Apple - id {apple.id[:8]}\n"
+        f"- [note] Same second as the snapshot - id {same_second.id[:8]}"
     )
     assert briefs == [expected, expected]
 
