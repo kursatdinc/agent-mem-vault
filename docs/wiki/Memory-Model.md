@@ -66,7 +66,8 @@ stateDiagram-v2
 
 1. the last-session card and the threads card;
 2. the latest snapshot that is not superseded, private or rejected;
-3. the active records created after that snapshot: kind, title and id;
+3. the active records created after that snapshot: kind, status, title and id, so a mitigated risk
+   reads `[risk: mitigated]` and an open one `[risk: open]`;
 4. `Consolidation due: <reason>` when that snapshot is older than seven days, or when there is no
    snapshot but there are active records.
 

@@ -109,8 +109,9 @@ Returns `Memory updated. ID: <id>. Revision: <n>`, `Memory not found.`, or
 2. `## Snapshot: <title> (<YYYY-MM-DD>, id <id8>)`: the latest snapshot that is not superseded,
    private or rejected, with its content.
 3. `## Since the snapshot` (or `## Active records` without a snapshot): active records created after
-   that snapshot, newest first, as `- [<kind>] <title> - id <id8>`. Active means not superseded, not
-   `superseded` or `resolved`, not private and not rejected.
+   that snapshot, newest first, as `- [<kind>: <status>] <title> - id <id8>` (`- [<kind>]` when the
+   record has no status). Active means not superseded, not `superseded` or `resolved`, not private
+   and not rejected.
 4. `Consolidation due: latest snapshot is <n> days old` when the snapshot is older than seven days,
    or `Consolidation due: no snapshot yet and <n> active records`.
 

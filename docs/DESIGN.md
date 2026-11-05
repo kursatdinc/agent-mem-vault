@@ -198,8 +198,9 @@ planner - <time> - id 3f9a2c1e`.
 2. the latest snapshot that is not superseded, private or rejected
    (`## Snapshot: <title> (<YYYY-MM-DD>, id <id8>)` and its content);
 3. the active records created after that snapshot, or all of them when there is none
-   (`## Since the snapshot` / `## Active records`), newest first, one `- [<kind>] <title> - id <id8>`
-   line each, at most `limit` (default 10) plus `- ... and <n> more`. Active means not a snapshot, no
+   (`## Since the snapshot` / `## Active records`), newest first, one
+   `- [<kind>: <status>] <title> - id <id8>` line each (`- [<kind>]` when the record has no status), at
+   most `limit` (default 10) plus `- ... and <n> more`. Active means not a snapshot, no
    `superseded_by`, status not `superseded` or `resolved`, not private, not rejected;
 4. `Consolidation due: latest snapshot is <n> days old` when that snapshot is older than seven days,
    or `Consolidation due: no snapshot yet and <n> active records` when there is no snapshot but there

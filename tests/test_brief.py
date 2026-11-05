@@ -26,10 +26,25 @@ def test_the_brief_shows_the_latest_snapshot_then_the_active_records_created_aft
         f"## Snapshot: Latest state (2026-10-28, id {latest.id[:8]})\n"
         "Search API is ready.\n\n"
         "## Since the snapshot\n"
-        f"- [risk] Redis is a new service - id {risk.id[:8]}\n"
-        f"- [decision] Cache in Redis - id {decision.id[:8]}"
+        f"- [risk: open] Redis is a new service - id {risk.id[:8]}\n"
+        f"- [decision: accepted] Cache in Redis - id {decision.id[:8]}"
     )
     assert format_brief(brief) == f"**Project brief for alpha**\n\n{brief.content}"
+
+
+def test_each_active_record_line_shows_its_status_so_a_mitigated_risk_differs_from_an_open_one(store):
+    note = save(store, "note", "Plain note")
+    task = save(store, "task", "Wire hooks", status="in progress")
+    mitigated = save(store, "risk", "Lock time", status="mitigated")
+    open_risk = save(store, "risk", "Token expiry")
+
+    assert store.get_project_brief("alpha").content.splitlines()[:5] == [
+        "## Active records",
+        f"- [risk: open] Token expiry - id {open_risk.id[:8]}",
+        f"- [risk: mitigated] Lock time - id {mitigated.id[:8]}",
+        f"- [task: in progress] Wire hooks - id {task.id[:8]}",
+        f"- [note] Plain note - id {note.id[:8]}",
+    ]
 
 
 def test_without_a_snapshot_the_active_records_are_listed_and_consolidation_is_due(store):
@@ -38,7 +53,7 @@ def test_without_a_snapshot_the_active_records_are_listed_and_consolidation_is_d
 
     assert store.get_project_brief("alpha").content == (
         "## Active records\n"
-        f"- [decision] Use Markdown - id {decision.id[:8]}\n"
+        f"- [decision: accepted] Use Markdown - id {decision.id[:8]}\n"
         f"- [note] Plain note - id {note.id[:8]}\n\n"
         "Consolidation due: no snapshot yet and 2 active records"
     )
@@ -61,8 +76,8 @@ def test_closed_superseded_private_and_rejected_records_are_not_active(store, va
     content = store.get_project_brief("alpha").content
 
     assert content.splitlines()[1:3] == [
-        f"- [risk] Mitigated risk - id {mitigated.id[:8]}",
-        f"- [decision] Current decision - id {current.id[:8]}",
+        f"- [risk: mitigated] Mitigated risk - id {mitigated.id[:8]}",
+        f"- [decision: accepted] Current decision - id {current.id[:8]}",
     ]
     for gone in ("Old decision", "Resolved risk", "Private note", "Rejected note"):
         assert gone not in content
