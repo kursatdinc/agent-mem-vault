@@ -19,7 +19,9 @@ Kind = Literal[*KINDS]
 Namespace = Annotated[
     str | None,
     Field(
-        max_length=INPUT_LIMITS["namespace"], description="Optional project or workspace namespace, default: default"
+        max_length=INPUT_LIMITS["namespace"],
+        description="Optional namespace; default: project/<git root name> of the server's working directory, "
+        "else the configured default_namespace",
     ),
 ]
 Tags = Annotated[

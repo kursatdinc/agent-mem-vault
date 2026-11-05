@@ -7,7 +7,7 @@ from agent_mem_vault import git
 from agent_mem_vault.config import load_config
 from agent_mem_vault.format import format_brief
 from agent_mem_vault.records import namespace_slug
-from agent_mem_vault.runtime import open_store
+from agent_mem_vault.runtime import open_store, repo_namespace
 from agent_mem_vault.store import CONSOLIDATION_DUE
 from agent_mem_vault.vault import Vault, log
 
@@ -36,11 +36,7 @@ def run_hook(action: str, client: str) -> int:
 
 
 def namespace_for(cwd: Path) -> str:
-    try:
-        root = Path(git.run_git(cwd, "rev-parse", "--show-toplevel"))
-    except git.GitError:
-        root = cwd
-    return f"project/{root.name}"
+    return repo_namespace(cwd) or f"project/{cwd.name}"
 
 
 def print_config(client: str) -> str:

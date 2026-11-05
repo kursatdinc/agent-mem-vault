@@ -5,7 +5,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
-def run_session(tmp_path, scenario, config_text=""):
+def run_session(tmp_path, scenario, config_text="", cwd=None):
     vault_root = tmp_path / "vault"
     vault_root.mkdir(parents=True)
     config_file = tmp_path / "config.yaml"
@@ -14,6 +14,7 @@ def run_session(tmp_path, scenario, config_text=""):
         command=sys.executable,
         args=["-c", "from agent_mem_vault.cli import run; run()"],
         env={"AGENT_MEM_VAULT_VAULT": str(vault_root), "AGENT_MEM_VAULT_CONFIG": str(config_file)},
+        cwd=cwd,
     )
 
     async def session_run():
