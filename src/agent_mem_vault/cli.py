@@ -40,7 +40,14 @@ def build_parser() -> argparse.ArgumentParser:
     migrate = commands.add_parser("migrate", help="archive the handoff records left by agent-mem-vault 1.x")
     mode = migrate.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true", help="print what would move and change nothing")
-    mode.add_argument("--apply", action="store_true", help="move them and commit when the vault is a git work tree")
+    mode.add_argument(
+        "--apply", action="store_true", help="move them, rebuild every hub and commit when the vault is a git work tree"
+    )
+
+    rebuild = commands.add_parser(
+        "rebuild-hubs", help="rebuild the generated hub notes of the given namespace folders, or of all of them"
+    )
+    rebuild.add_argument("slugs", nargs="*", metavar="SLUG", help="a namespace folder, for example project-harbor-api")
 
     hook = commands.add_parser("hook", help="client hook entry points; they need features.hooks")
     events = hook.add_subparsers(dest="action", required=True)
@@ -74,19 +81,35 @@ def _print_records(records: list, empty: str, mark_rejected: bool = False) -> in
 
 
 def _migrate(store, apply: bool) -> int:
-    moves = archive_legacy_handoffs(store) if apply else legacy_handoffs(store.vault.root)
-    if not moves:
-        print("No legacy handoffs found.")
-        return 0
+    moves, hubs = archive_legacy_handoffs(store) if apply else (legacy_handoffs(store.vault.root), [])
     for move in moves:
         print(_move_line(move, apply))
     count = sum(not move.blocked for move in moves)
     noun = "handoff" if count == 1 else "handoffs"
-    if apply:
+    if not moves:
+        print("No legacy handoffs found.")
+    elif apply:
         print(f"Moved {count} legacy {noun}.")
     else:
         print(f"Dry run: {count} legacy {noun} to move. Run `agent-mem-vault migrate --apply` to move them.")
+    if apply:
+        _print_hub_changes(store.vault.root, hubs)
     return 0
+
+
+def _rebuild_hubs(store, slugs: list[str]) -> int:
+    touched, unknown = store.rebuild_hubs(slugs or None)
+    for slug in unknown:
+        print(f"agent-mem-vault: no namespace folder named {slug}: skipped", file=sys.stderr)
+    _print_hub_changes(store.vault.root, touched)
+    return 0
+
+
+def _print_hub_changes(root, touched: list[str]) -> None:
+    for path in touched:
+        print(f"{'wrote' if (root / path).exists() else 'removed'} {path}")
+    if not touched:
+        print("Hubs are up to date.")
 
 
 def _move_line(move: Move, apply: bool) -> str:
@@ -103,6 +126,8 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     store = open_store(config)
     if args.command == "migrate":
         return _migrate(store, args.apply)
+    if args.command == "rebuild-hubs":
+        return _rebuild_hubs(store, args.slugs)
     if args.command == "list":
         records = store.list_contexts(
             args.namespace, args.agent, args.tags, args.kind, args.limit, args.include_private
