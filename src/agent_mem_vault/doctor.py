@@ -22,7 +22,7 @@ def run_doctor(config: Config) -> int:
     print(f"config file: {config.config_file or 'none (defaults and environment)'}")
     print(f"vault: {vault.root}")
     print(f".obsidian: {'present' if (vault.root / '.obsidian').is_dir() else 'missing'}")
-    print(f"default namespace: {config.default_namespace}")
+    print(f"default namespace: project/<git root name> inside a git work tree, else {config.default_namespace}")
     print(f"redact secrets: {str(config.redact_secrets).lower()}")
     print(f"git autocommit: {str(config.git_autocommit).lower()}")
     flags = (("receipts", config.receipts), ("companion", config.companion))

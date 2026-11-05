@@ -47,7 +47,7 @@ the 1.x tool surface; see *Upgrading from 1.x* below.
   the id: `1. [decision: accepted] (alpha) Pick storage - planner - <time> - id 3f9a2c1e`. The
   `context/` prefix is gone.
 - A tool call or CLI listing without a namespace uses `project/<git root name>` of the working
-  directory; `default_namespace` applies only outside a git work tree.
+  directory; `default_namespace` applies only outside a git work tree. `doctor` prints that rule.
 - The stop hook asks the agent to update the companion cards, and to save a decision or risk only
   when one was made or verified.
 - The dashboard's decisions view lists only active decisions and risks and shows `review_by`.
@@ -56,16 +56,19 @@ the 1.x tool surface; see *Upgrading from 1.x* below.
 
 1. Upgrade the package: `uv tool upgrade agent-mem-vault` (or `uv tool install agent-mem-vault`), and
    restart your agents so `uvx` starts the 2.0.0 server.
-2. Preview, then archive the old handoffs, on one machine:
+2. Check your config file: a `features.companion: false` line copied from the 1.x example keeps the
+   companion cards and their tools off; remove it or set it to `true`. The hooks run only with
+   `features.hooks: true`.
+3. Preview, then archive the old handoffs, on one machine:
    `agent-mem-vault migrate --dry-run`, then `agent-mem-vault migrate --apply`. Sync the vault
    repository to your other machines afterwards.
-3. Re-register the hooks: print the snippet with
+4. Re-register the hooks: print the snippet with
    `agent-mem-vault hook print-config --client claude` (and `--client codex`) and replace the old
    entries in your client settings, so the new stop nudge is used.
-4. Update agent instructions that call handoff tools: read the brief at session start, keep
+5. Update agent instructions that call handoff tools: read the brief at session start, keep
    `last_session` and `threads` current with `update_companion`, and record a decision or risk only
    when one was made or verified.
-5. Optional: delete `_dashboards/memory.base` to get the new dashboard on the next write; an existing
+6. Optional: delete `_dashboards/memory.base` to get the new dashboard on the next write; an existing
    dashboard is never overwritten.
 
 Decisions saved with a 1.x status outside the new lifecycle (for example `proposed`) still load; only

@@ -17,8 +17,8 @@ The layers follow CoALA (working, episodic, semantic, procedural memory):
   thread). Both are overwritten, never appended, and the SessionStart hook loads them every session.
 - Semantic memory is `decision` and `risk` records with a lifecycle, plus `snapshot` records that
   summarize a namespace. Consolidation folds what accumulated since the last snapshot into a new one
-  and closes stale records through `supersedes`; every change is a vault git commit, so it can be
-  reverted.
+  and closes stale records through `supersedes`; with `features.git_autocommit` every change is a
+  vault git commit, so it can be reverted.
 - Procedural memory is the agents' instruction files and skills, outside this server.
 - Not stored: production incidents (they belong in the issue tracker) and anything a client keeps
   in its own memory. A risk is recorded only for a lasting constraint.
@@ -132,8 +132,8 @@ agent-written: true
 - Files are written to `<vault>/.agent-mem-vault/tmp/` and moved into place with `os.replace`
   (atomic on one filesystem). Leftover tmp files at startup are incomplete writes: removed and
   logged to stderr.
-- Updates (supersede marking, update_memory) re-read the file under the lock, require `revision` to match the expected one when the caller passes `expected_revision`,
-  write `revision + 1`, and re-check the file hash immediately before `os.replace`; if a human
+- Updates (supersede marking, update_memory) re-read the file under the lock, require `revision` to
+  match the expected one when the caller passes `expected_revision`, write `revision + 1`, and re-check the file hash immediately before `os.replace`; if a human
   changed it in between, retry once, then return a conflict. Nothing is overwritten silently.
 - After each write: regenerate the namespace hub `<namespace-slug>/<namespace-slug>.md`; create `_dashboards/memory.base` if
   absent; if `features.git_autocommit` and the vault is a git repo, commit the touched paths with
@@ -203,10 +203,10 @@ with `include_private: true`. Validity: `rejected` records stay, are excluded fr
 marked in search output.
 
 - Decision: `features.visibility` and `features.companion` are on by default (as the config example
-  above shows); every other feature is off. The optional `include_private` parameter exists on `list_contexts`, `search_memory`
-  and `read_latest_context` in both states and only has an effect while the feature is on. The
-  `[rejected]` mark sits inside the bracket group of a listing line (`[context/note [rejected]]`) and is
-  printed only while the feature is on. `list` and `search` on the CLI take `--include-private`.
+  above shows); every other feature is off. The optional `include_private` parameter exists on
+  `list_contexts`, `search_memory` and `read_latest_context` in both states and only has an effect
+  while the feature is on. The `[rejected]` mark sits inside the bracket group of a listing line
+  (`[note [rejected]]`, `[decision: accepted [rejected]]`) and is printed only while the feature is on. `list` and `search` on the CLI take `--include-private`.
 - Decision: `receipt` is a known kind only while `features.receipts` is on; with it off, `receipt/`
   folders are not scanned. Receipts are immutable: `update_memory` and `supersedes` refuse them. `refs`
   are written to frontmatter and to the Related list as code spans, not wikilinks, because they are
@@ -246,9 +246,9 @@ marked in search output.
   works regardless. Output conventions: session-start prints
   `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ...}}` for Claude Code and
   plain text for Codex, capped at 9000 characters (a truncated brief ends with `[brief truncated]`,
-followed by the brief's `Consolidation due` line when it had one). The
-  stop nudge is `{"decision": "block", "reason": ...}` for Claude Code and plain text for Codex, and is
-  skipped when the input has `stop_hook_active: true`. The change signature (HEAD plus a hash of
+  followed by the brief's `Consolidation due` line when it had one). The stop nudge is
+  `{"decision": "block", "reason": ...}` for Claude Code and plain text for Codex, and is skipped when
+  the input has `stop_hook_active: true`. The change signature (HEAD plus a hash of
   `git status --porcelain`) is stored per namespace in `<vault>/.agent-mem-vault/state/stop-<ns-slug>`;
   outside a git work tree the stop hook stays silent. Every hook path exits 0 on any error and logs the
   reason to stderr; the error path of a missing vault setting or vault directory included.
