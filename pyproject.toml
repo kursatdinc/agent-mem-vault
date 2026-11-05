@@ -1,6 +1,6 @@
 [project]
 name = "agent-mem-vault"
-version = "2.1.0"
+version = "2.2.0"
 description = "MCP server that gives coding agents durable, shared memory stored as notes in an Obsidian vault."
 readme = "README.md"
 license = "MIT"

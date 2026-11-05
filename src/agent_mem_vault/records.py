@@ -27,6 +27,7 @@ _KEY_ORDER = (
     "visibility",
     "validity",
     "tags",
+    "aliases",
     "status",
     "review_by",
     "related_files",
@@ -115,11 +116,19 @@ class Record:
 
     @property
     def tags(self) -> list[str]:
-        tags = self.meta.get("tags")
-        if isinstance(tags, str):
-            return [tags]
-        if isinstance(tags, list):
-            return [str(tag) for tag in tags]
+        return self._labels("tags")
+
+    @property
+    def aliases(self) -> list[str]:
+        return self._labels("aliases")
+
+    def _labels(self, key: str) -> list[str]:
+        """A hand-edited list property may be a single string; Obsidian accepts both."""
+        value = self.meta.get(key)
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [str(item) for item in value]
         return []
 
     @property

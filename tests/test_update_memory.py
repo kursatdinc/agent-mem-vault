@@ -135,3 +135,19 @@ def test_an_update_regenerates_the_hub_with_the_new_title(store, vault):
     hub = (vault.root / "alpha" / "alpha.md").read_text(encoding="utf-8")
     assert f"- [[{record.path.removesuffix('.md')}|Pick storage engine]] (2026-10-28)" in hub
     assert "Pick storage]]" not in hub
+
+
+def test_aliases_are_written_as_an_obsidian_list_replaced_on_update_and_cleared_by_an_empty_list(store, vault):
+    record = store.save_memory(agent="a", kind="decision", title="D", content="c", aliases=["ADK", " ADK ", "adk 2.11"])
+    assert "aliases: [ADK, adk 2.11]" in (vault.root / record.path).read_text(encoding="utf-8")
+
+    store.update_memory(record.id, aliases=["Agent Development Kit"])
+    assert "aliases: [Agent Development Kit]" in (vault.root / record.path).read_text(encoding="utf-8")
+
+    store.update_memory(record.id, aliases=[])
+    assert "aliases" not in (vault.root / record.path).read_text(encoding="utf-8")
+
+
+def test_an_alias_longer_than_a_title_is_refused(store):
+    with pytest.raises(ValueError, match="alias exceeds 200 characters"):
+        store.save_memory(agent="a", kind="decision", title="D", content="c", aliases=["x" * 201])
