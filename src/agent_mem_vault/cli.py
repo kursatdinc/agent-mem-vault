@@ -29,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     listing.add_argument("--kind")
     listing.add_argument("--tag", action="append", dest="tags")
     listing.add_argument("--include-private", action="store_true")
+    listing.add_argument("--include-closed", action="store_true")
 
     search = commands.add_parser("search", help="search records by text")
     search.add_argument("query")
@@ -36,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--kind")
     search.add_argument("--tag", action="append", dest="tags")
     search.add_argument("--include-private", action="store_true")
+    search.add_argument("--include-closed", action="store_true")
 
     migrate = commands.add_parser("migrate", help="archive the handoff records left by agent-mem-vault 1.x")
     mode = migrate.add_mutually_exclusive_group(required=True)
@@ -130,11 +132,18 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return _rebuild_hubs(store, args.slugs)
     if args.command == "list":
         records = store.list_contexts(
-            args.namespace, args.agent, args.tags, args.kind, args.limit, args.include_private
+            args.namespace, args.agent, args.tags, args.kind, args.limit, args.include_private, args.include_closed
         )
         return _print_records(records, "No saved context yet.", store.visibility_filter)
     records = store.search_memory(
-        args.namespace, args.query, args.agent, args.tags, args.kind, args.limit, args.include_private
+        args.namespace,
+        args.query,
+        args.agent,
+        args.tags,
+        args.kind,
+        args.limit,
+        args.include_private,
+        args.include_closed,
     )
     return _print_records(records, "No matching memory found.", store.visibility_filter)
 

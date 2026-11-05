@@ -310,8 +310,11 @@ class Store:
         kind: str | None = None,
         limit: float | None = None,
         include_private: bool = False,
+        include_closed: bool = False,
     ) -> list[Record]:
-        records = self._select(namespace, agent=agent, tags=tags, kind=kind, include_private=include_private)
+        records = self._select(
+            namespace, agent=agent, tags=tags, kind=kind, include_private=include_private, include_closed=include_closed
+        )
         return records[: normalize_limit(limit)]
 
     def search_memory(
@@ -323,8 +326,11 @@ class Store:
         kind: str | None = None,
         limit: float | None = None,
         include_private: bool = False,
+        include_closed: bool = False,
     ) -> list[Record]:
-        records = self._select(namespace, agent=agent, tags=tags, kind=kind, include_private=include_private)
+        records = self._select(
+            namespace, agent=agent, tags=tags, kind=kind, include_private=include_private, include_closed=include_closed
+        )
         if query:
             wanted = query_stems(sanitize_text(query, "query", INPUT_LIMITS["content"]))
             scored = [(score(record, wanted), record) for record in records]
@@ -402,6 +408,7 @@ class Store:
         tags: list[str] | None = None,
         kind: str | None = None,
         include_private: bool = True,
+        include_closed: bool = True,
     ) -> list[Record]:
         safe_namespace = self._namespace(namespace)
         hide_private = self.visibility_filter and not include_private
@@ -414,6 +421,7 @@ class Store:
             and (safe_agent is None or record.agent == safe_agent)
             and (kind is None or record.kind == kind)
             and not (hide_private and record.meta.get("visibility") == "private")
+            and (include_closed or _is_active(record))
             and set(safe_tags) <= set(record.tags)
         ]
 

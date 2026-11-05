@@ -15,6 +15,8 @@ Conventions:
   the tags given.
 - `limit` is a number; the default is 10.
 - `include_private` only has an effect while `features.visibility` is on.
+- `search_memory` and `list_contexts` leave out closed records unless `include_closed` is true: a
+  superseded decision, a resolved risk and any record another record superseded.
 - Expected failures (invalid input, a vault problem) come back as tool errors whose text says what to
   fix. Not finding a record is a normal reply, such as `Memory not found.`
 - Redaction is applied to content before it is written, when `redact_secrets` is on.
@@ -135,13 +137,14 @@ count three times as much as content hits; ties go to the newest record.
 | `kind` | enum | no | One of the active kinds. |
 | `limit` | number | no | |
 | `include_private` | boolean | no | Default false. |
+| `include_closed` | boolean | no | Default false. True also returns superseded and resolved records. |
 
 Returns numbered lines or `No matching memory found.`
 
 ### list_contexts
 
 Recent records, newest first. Parameters: `namespace`, `agent`, `tags`, `kind`, `limit`,
-`include_private`, as in `search_memory`. Returns `No saved context yet.` when empty.
+`include_private`, `include_closed`, as in `search_memory`. Returns `No saved context yet.` when empty.
 
 ### read_latest_context
 

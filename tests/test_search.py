@@ -49,9 +49,9 @@ def test_agent_and_destination_names_are_not_searched_but_the_related_block_is_n
     old = store.save_memory(agent="zebra-agent", kind="decision", title="Old", content="old body", namespace="p")
     store.save_memory(agent="a", kind="decision", title="New", content="new body", namespace="p", supersedes=[old.id])
 
-    assert store.search_memory(namespace="p", query="zebra") == []
-    assert store.search_memory(namespace="p", query="supersedes") == []
-    assert titles(store.search_memory(namespace="p", query="old")) == ["Old"]
+    assert store.search_memory(namespace="p", query="zebra", include_closed=True) == []
+    assert store.search_memory(namespace="p", query="supersedes", include_closed=True) == []
+    assert titles(store.search_memory(namespace="p", query="old", include_closed=True)) == ["Old"]
 
 
 def test_a_query_without_word_characters_matches_nothing_and_no_query_lists_newest_first(store):
