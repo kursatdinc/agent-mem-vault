@@ -48,6 +48,13 @@ OptionalAgent = Annotated[str | None, Field(max_length=INPUT_LIMITS["agent"], de
 IncludePrivate = Annotated[
     bool, Field(description="Include private records; hidden by default while the visibility feature is on")
 ]
+IncludeClosed = Annotated[
+    bool,
+    Field(
+        description="Include closed records: superseded decisions, resolved risks and records another one "
+        "superseded; hidden by default"
+    ),
+]
 Visibility = Literal["public", "internal", "private"]
 Validity = Literal["valid", "rejected"]
 
@@ -152,8 +159,9 @@ def create_server(store: Store) -> MCPServer:
         kind: FilterKind = None,
         limit: Annotated[float | None, Field(description="Maximum number of items to list, default: 10")] = None,
         include_private: IncludePrivate = False,
+        include_closed: IncludeClosed = False,
     ) -> str:
-        records = store.list_contexts(namespace, agent, tags, kind, limit, include_private)
+        records = store.list_contexts(namespace, agent, tags, kind, limit, include_private, include_closed)
         return format_records(records, store.visibility_filter) if records else "No saved context yet."
 
     @tool("search_memory", "Search saved memory by text and filters.")
@@ -165,8 +173,9 @@ def create_server(store: Store) -> MCPServer:
         kind: FilterKind = None,
         limit: Annotated[float | None, Field(description="Maximum number of items to return, default: 10")] = None,
         include_private: IncludePrivate = False,
+        include_closed: IncludeClosed = False,
     ) -> str:
-        records = store.search_memory(namespace, query, agent, tags, kind, limit, include_private)
+        records = store.search_memory(namespace, query, agent, tags, kind, limit, include_private, include_closed)
         return format_records(records, store.visibility_filter) if records else "No matching memory found."
 
     @tool("create_snapshot", "Save a durable snapshot summary for a namespace.")

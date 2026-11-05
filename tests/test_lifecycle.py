@@ -150,6 +150,83 @@ def test_a_snapshot_can_supersede_the_previous_snapshot(store):
     assert "status" not in reread(store, old).meta
 
 
+# Closed records
+
+
+def save_cache_history(store):
+    old = save(store, "decision", "Old cache plan")
+    save(store, "decision", "New cache plan", supersedes=[old.id])
+    save(store, "risk", "Cache stampede", status="resolved")
+    save(store, "risk", "Cache warmup", status="mitigated")
+    replaced = save(store, "task", "Cache task", status="in progress")
+    save(store, "task", "Cache task v2", supersedes=[replaced.id])
+    save(store, "decision", "Cache hand-closed", status="superseded")
+
+
+def titles(records):
+    return [record.title for record in records]
+
+
+ALL_CACHE_TITLES = [
+    "Cache hand-closed",
+    "Cache task v2",
+    "Cache task",
+    "Cache warmup",
+    "Cache stampede",
+    "New cache plan",
+    "Old cache plan",
+]
+
+
+def test_list_and_search_hide_superseded_resolved_and_replaced_records_unless_asked(store):
+    save_cache_history(store)
+
+    assert titles(store.list_contexts("alpha")) == ["Cache task v2", "Cache warmup", "New cache plan"]
+    assert titles(store.search_memory("alpha", "cache")) == ["Cache task v2", "Cache warmup", "New cache plan"]
+    assert titles(store.list_contexts("alpha", kind="decision")) == ["New cache plan"]
+    assert titles(store.list_contexts("alpha", include_closed=True)) == ALL_CACHE_TITLES
+    assert titles(store.search_memory("alpha", "cache", include_closed=True)) == ALL_CACHE_TITLES
+    assert titles(store.search_memory("alpha", kind="decision", include_closed=True)) == [
+        "Cache hand-closed",
+        "New cache plan",
+        "Old cache plan",
+    ]
+
+
+def test_include_closed_is_exposed_over_stdio_and_off_by_default(tmp_path):
+    async def scenario(session):
+        tools = {tool.name: tool for tool in (await session.list_tools()).tools}
+        decision = {"agent": "a", "kind": "decision", "content": "c", "namespace": "alpha"}
+        old = await call(session, "save_memory", title="Old plan", **decision)
+        await call(session, "save_memory", title="New plan", supersedes=[old.rsplit(" ", 1)[1]], **decision)
+        replies = {
+            "list": await call(session, "list_contexts", namespace="alpha"),
+            "list_closed": await call(session, "list_contexts", namespace="alpha", include_closed=True),
+            "search": await call(session, "search_memory", namespace="alpha", query="plan"),
+            "search_closed": await call(session, "search_memory", namespace="alpha", query="plan", include_closed=True),
+        }
+        return tools, replies
+
+    tools, replies = run_session(tmp_path, scenario)
+
+    for name in ("list_contexts", "search_memory"):
+        parameter = tools[name].input_schema["properties"]["include_closed"]
+        assert (parameter["type"], parameter["default"]) == ("boolean", False)
+    entries = {
+        key: sorted(line.split(" - ")[0].split(" ", 1)[1] for line in reply.splitlines())
+        for key, reply in replies.items()
+    }
+    assert entries["list"] == entries["search"] == ["[decision: accepted] (alpha) New plan"]
+    assert (
+        entries["list_closed"]
+        == entries["search_closed"]
+        == [
+            "[decision: accepted] (alpha) New plan",
+            "[decision: superseded] (alpha) Old plan",
+        ]
+    )
+
+
 # Short ids
 
 

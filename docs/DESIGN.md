@@ -162,6 +162,9 @@ agent-written: true
   A record matches when every query stem occurs in title + content + tags. Score = 3 x title stem
   hits + content stem hits; ties broken by newest `created`.
 - Ordering for list operations: newest `created` first.
+- `search_memory` and `list_contexts` hide closed records unless `include_closed` is true
+  (`--include-closed` on the CLI). Closed is the opposite of active in the brief: `superseded_by` is
+  set, or the status is `superseded` or `resolved`. `read_latest_context` does not filter them.
 - Invalid candidates (unparseable YAML, missing `id`/`kind`/`namespace`, unknown kind, duplicate
   id) are skipped and reported through `list_issues` and `doctor`; they are never modified.
 - Link resolution (for `get_links` and the Related block) follows Obsidian's rules: exact
@@ -179,7 +182,7 @@ The names, parameters and reply texts below are stable: agent instructions may d
 | `save_memory` | kind, title, content, tags, status, relatedFiles, branch, commit, nextAction, + `supersedes` (ids) |
 | `create_snapshot` | kind `snapshot`, + `supersedes` (ids); a superseded snapshot drops out of the brief |
 | `get_project_brief` | see *Brief* below |
-| `read_latest_context`, `list_contexts`, `search_memory` | filters: agent, tags, kind, limit, include_private |
+| `read_latest_context`, `list_contexts`, `search_memory` | filters: agent, tags, kind, limit, include_private; `list_contexts` and `search_memory` also include_closed |
 | `update_memory` | id, expected_revision, any of title/content/tags/status/visibility/validity/rejected_reason, + `supersedes` (ids, appended to the record's list); kind, namespace and id are not parameters (extra arguments are refused); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
 | `get_links` | outgoing links and backlinks of a record |
 | `list_issues` | invalid record candidates with reason |

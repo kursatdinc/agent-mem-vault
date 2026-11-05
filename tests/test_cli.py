@@ -89,6 +89,32 @@ def test_list_and_search_print_the_numbered_line_format(configured_vault, capsys
     assert capsys.readouterr().out == "No saved context yet.\n"
 
 
+def test_list_and_search_hide_closed_records_unless_include_closed_is_passed(configured_vault, capsys):
+    store = Store(configured_vault)
+    record = {"agent": "a", "content": "c", "namespace": "alpha"}
+    old = store.save_memory(kind="decision", title="Old plan", **record)
+    store.save_memory(kind="decision", title="New plan", supersedes=[old.id], **record)
+    store.save_memory(kind="risk", title="Fixed plan risk", status="resolved", **record)
+    everything = [
+        "[decision: accepted] (alpha) New plan",
+        "[decision: superseded] (alpha) Old plan",
+        "[risk: resolved] (alpha) Fixed plan risk",
+    ]
+
+    outputs = {}
+    for name, argv in (
+        ("list", ["list", "--namespace", "alpha"]),
+        ("list_closed", ["list", "--namespace", "alpha", "--include-closed"]),
+        ("search", ["search", "plan", "--namespace", "alpha"]),
+        ("search_closed", ["search", "plan", "--namespace", "alpha", "--include-closed"]),
+    ):
+        assert main(argv) == 0
+        outputs[name] = sorted(line.split(" - ")[0].split(" ", 1)[1] for line in capsys.readouterr().out.splitlines())
+
+    assert outputs["list"] == outputs["search"] == ["[decision: accepted] (alpha) New plan"]
+    assert outputs["list_closed"] == outputs["search_closed"] == everything
+
+
 def test_doctor_reports_config_vault_counts_issues_and_leftovers_without_touching_the_vault(configured_vault, capsys):
     store = Store(configured_vault)
     store.save_memory(agent="a", kind="decision", title="D", content="c")
