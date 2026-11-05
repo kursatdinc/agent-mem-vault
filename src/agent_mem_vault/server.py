@@ -51,8 +51,8 @@ IncludePrivate = Annotated[
 IncludeClosed = Annotated[
     bool,
     Field(
-        description="Include closed records: superseded decisions, resolved risks and records another one "
-        "superseded; hidden by default"
+        description="Include closed records: records another one superseded and records whose status is "
+        "superseded or resolved; hidden by default"
     ),
 ]
 Visibility = Literal["public", "internal", "private"]

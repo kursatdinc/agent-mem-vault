@@ -15,8 +15,9 @@ Conventions:
   the tags given.
 - `limit` is a number; the default is 10.
 - `include_private` only has an effect while `features.visibility` is on.
-- `search_memory` and `list_contexts` leave out closed records unless `include_closed` is true: a
-  superseded decision, a resolved risk and any record another record superseded.
+- `search_memory` and `list_contexts` leave out closed records unless `include_closed` is true: any
+  record another record superseded, and any record whose status is `superseded` or `resolved`,
+  including a free-text status of another kind.
 - Expected failures (invalid input, a vault problem) come back as tool errors whose text says what to
   fix. Not finding a record is a normal reply, such as `Memory not found.`
 - Redaction is applied to content before it is written, when `redact_secrets` is on.
@@ -95,7 +96,8 @@ Change fields of an existing record in place. Kind, namespace, id and file name 
 | `rejected_reason` | string | no | Allowed only when the resulting validity is `rejected`. |
 | `supersedes` | list of record ids | no | Added to the record's `supersedes` list and Related block; the targets are closed as in `save_memory`. A record cannot supersede itself. |
 
-At least one field to change is required. Other arguments are refused. Receipts cannot be updated.
+At least one field to change is required; other arguments, such as `kind` or a `review_by` from 2.0.x,
+are ignored and do not count as one. Receipts cannot be updated.
 Returns `Memory updated. ID: <id>. Revision: <n>`, `Memory not found.`, or
 `Revision conflict: expected revision <a> but the current revision is <b>. Read the record again before updating.`
 

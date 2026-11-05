@@ -22,17 +22,19 @@ that were closed.
 
 - Each active-record line of the brief shows the record's status, `- [<kind>: <status>] <title> - id
   <id8>` (`- [<kind>]` when there is none), so `[risk: mitigated]` no longer reads like an open risk.
-- `search_memory` and `list_contexts` leave out closed records by default: a superseded decision, a
-  resolved risk, and any record with `superseded_by`. Pass `include_closed: true` (on the CLI,
-  `--include-closed`) to see them. `read_latest_context` and the brief are unchanged.
+- `search_memory` and `list_contexts` leave out closed records by default, the same ones the brief
+  leaves out: any record with `superseded_by`, and any record whose status is `superseded` or
+  `resolved`, a free-text status of a task or note included. Pass `include_closed: true` (on the CLI,
+  `--include-closed`) to see them. `read_latest_context` still returns them.
 
 ### Upgrading from 2.0.x
 
-Upgrade the package; no migration is needed. Agent instructions that pass `review_by` keep working,
-but the date is no longer stored, so drop it from them. An existing `_dashboards/memory.base` keeps
-its `review_by` column, since the dashboard is written only when absent: delete the file to get the
-new one on the next write, or remove the `note.review_by` line yourself. To find an old decision
-that was superseded, search with `include_closed`.
+Upgrade the package; no migration is needed. A `review_by` argument is ignored, so a call that also
+changes something else still succeeds without storing the date, while an `update_memory` call that
+passes only `review_by` now fails with `nothing to update`; drop it from agent instructions. An
+existing `_dashboards/memory.base` keeps its `review_by` column, since the dashboard is written only
+when absent: delete the file to get the new one on the next write, or remove the `note.review_by`
+line yourself. To find an old decision that was superseded, search with `include_closed`.
 
 ## [2.0.1] - 2026-11-05
 
