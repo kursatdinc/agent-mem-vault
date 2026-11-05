@@ -391,11 +391,11 @@ class Store:
 
     def _publish(self, op: str, record: Record, also_touched: list[str] | None = None) -> None:
         """Refresh the namespace hub and the dashboard, then commit; none of it may fail the write."""
-        touched = [record.path, *(also_touched or []), *self._refresh_generated(record.namespace)]
+        touched = [record.path, *(also_touched or []), *self.refresh_generated(record.namespace)]
         if self.git_autocommit:
             git.autocommit(self.vault.root, touched, f"avm: {op} {record.kind} {record.id[:8]}")
 
-    def _refresh_generated(self, namespace: str) -> list[str]:
+    def refresh_generated(self, namespace: str) -> list[str]:
         touched: list[str] = []
         try:
             hub = hub_relpath(namespace)
