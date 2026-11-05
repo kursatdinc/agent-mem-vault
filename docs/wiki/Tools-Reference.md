@@ -128,7 +128,10 @@ An empty namespace reads `No saved memory found for namespace: <namespace>`.
 
 Free-text search plus filters. Text is lowercased and stemmed, so `caching` finds `cache` and
 `cached`. A record matches when every query stem appears in its title, content or tags. Title hits
-count three times as much as content hits; ties go to the newest record.
+count three times as much as content hits, and the total is weighted by the record's age:
+`0.5 + 0.5 x 2^(-age_days / 30)`, so a match counts fully when new, three quarters at 30 days and
+never less than half. A year-old title hit still outranks a new single content hit. Ties go to the
+newest record.
 
 | Parameter | Type | Required | Notes |
 |---|---|---|---|

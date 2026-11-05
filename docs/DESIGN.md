@@ -159,8 +159,15 @@ agent-written: true
 - Each query walks the vault (skipping dot-directories), parses candidate records, filters, ranks
   and forgets. No cache on disk.
 - Free text: tokens are `\w+` lowercased and stemmed with PyStemmer `english` (in-process memo).
-  A record matches when every query stem occurs in title + content + tags. Score = 3 x title stem
-  hits + content stem hits; ties broken by newest `created`.
+  A record matches when every query stem occurs in title + content + tags. Text score = 3 x title stem
+  hits + content stem hits. The rank is the text score times an age weight
+  `0.5 + 0.5 x 2^(-age_days / 30)`, the age taken from `created` against the store clock: 1 for a new
+  record, 0.75 at 30 days, 0.625 at 60, never below 0.5. A missing or unreadable `created` weighs 0.5,
+  a date without a zone is read as UTC, and a `created` in the future weighs 1. Ties broken by newest
+  `created`.
+- Decision: the age weight multiplies the text score and stops at 0.5, so recency reorders matches of
+  similar strength but a record with more than twice another's text score ranks above it however old
+  it is: a year-old title hit (3 x 0.5) still beats a new single content hit (1).
 - Ordering for list operations: newest `created` first.
 - `search_memory` and `list_contexts` hide closed records unless `include_closed` is true
   (`--include-closed` on the CLI). Closed is the opposite of active in the brief: `superseded_by` is

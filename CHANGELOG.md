@@ -8,8 +8,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [2.1.0] - 2026-11-05
 
-The brief tells an open risk from a mitigated one, and search and listings stop surfacing records
-that were closed.
+The brief tells an open risk from a mitigated one, search and listings stop surfacing records that
+were closed, and search favours recent records.
 
 ### Removed
 
@@ -26,6 +26,10 @@ that were closed.
   leaves out: any record with `superseded_by`, and any record whose status is `superseded` or
   `resolved`, a free-text status of a task or note included. Pass `include_closed: true` (on the CLI,
   `--include-closed`) to see them. `read_latest_context` still returns them.
+- `search_memory` (and `search` on the CLI) ranks recent records higher: the text score is multiplied
+  by `0.5 + 0.5 x 2^(-age_days / 30)`, the age taken from `created`, so a match counts fully when new,
+  three quarters at 30 days and never less than half. A record with more than twice another's text
+  score still ranks above it however old it is; ties still go to the newest record.
 
 ### Upgrading from 2.0.x
 
