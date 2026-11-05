@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+from datetime import UTC, datetime
 
 import pytest
 
@@ -158,3 +159,42 @@ def test_the_vault_store_api_rebuilds_hubs_for_a_sync_script(tmp_path):
 
     assert store.rebuild_hubs(["proj", "nope"]) == (["proj/proj.md"], ["nope"])
     assert store.rebuild_hubs() == ([], [])
+
+
+def test_a_user_note_at_a_hub_path_that_only_says_generated_is_not_a_hub_and_stays(configured_vault, capsys):
+    root = configured_vault.root
+    (root / "ideas").mkdir()
+    (root / "ideas" / "ideas.md").write_text("---\ngenerated: true\n---\n# Ideas I drafted with a plugin\n")
+
+    assert main(["rebuild-hubs"]) == 0
+
+    assert capsys.readouterr().out == "Hubs are up to date.\n"
+    assert read(root, "ideas/ideas.md") == "---\ngenerated: true\n---\n# Ideas I drafted with a plugin\n"
+
+
+def test_a_card_that_is_not_utf8_neither_stops_the_rebuild_nor_loses_the_title_another_card_names(stale_vault, capsys):
+    root = stale_vault.root
+    Store(stale_vault, clock=TickingClock(), companion_max_chars=100).update_companion("project/beta", threads=THREAD)
+    (root / "project-beta" / "project-beta.md").unlink()
+    (root / "project-beta" / "_companion" / "last-session.md").write_bytes(b"\xff\xfe not utf-8\n")
+
+    assert main(["rebuild-hubs"]) == 0
+
+    assert capsys.readouterr().out.splitlines() == ["wrote alpha/alpha.md", "wrote project-beta/project-beta.md"]
+    assert read(root, "project-beta/project-beta.md").startswith("---\nnamespace: project/beta\n")
+
+
+def test_records_created_in_the_same_second_keep_one_hub_order_whatever_their_file_times(tmp_path):
+    root = tmp_path / "vault"
+    root.mkdir()
+    store = Store(Vault(root), clock=lambda: datetime(2026, 10, 28, 9, 0, 0, tzinfo=UTC))
+    first = store.save_memory(agent="a", kind="decision", title="Apple", content="c", namespace="proj")
+    second = store.save_memory(agent="a", kind="decision", title="Banana", content="c", namespace="proj")
+    order = []
+    for older, newer in ((first, second), (second, first)):
+        os.utime(root / older.path, ns=(1_000_000_000, 1_000_000_000))
+        os.utime(root / newer.path, ns=(2_000_000_000, 2_000_000_000))
+        store.rebuild_hubs()
+        order.append([line[2:].split("|")[1] for line in read(root, "proj/proj.md").splitlines() if "|" in line])
+
+    assert order == [["Banana]] (2026-10-28)", "Apple]] (2026-10-28)", "memory dashboard]]"]] * 2

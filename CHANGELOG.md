@@ -32,8 +32,12 @@ graph.
 
 - Companion cards and the dashboard showed as orphan nodes in the graph.
 - A namespace left with no records and no cards (for example after its handoffs were archived) kept
-  an empty hub; its generated hub is now removed, and its folder once empty. A note you wrote at the
-  hub path is never removed.
+  an empty hub; its generated hub is now removed, and its folder once empty. Only a file with the
+  hub's own frontmatter (`generated: true`, `agent-written: true` and the folder's namespace) is
+  removed, so a note you wrote at the hub path stays.
+- Records created in the same second were ordered in the hub by file modification time, which differs
+  on each machine that syncs the vault, so the machines kept rewriting each other's hubs. They are
+  now ordered by path.
 - A git autocommit no longer fails when one of its paths was neither on disk nor tracked.
 
 ### Upgrading from 2.0.0

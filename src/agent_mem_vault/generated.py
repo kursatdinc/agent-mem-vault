@@ -48,11 +48,16 @@ def hub_relpath(namespace: str) -> str:
 
 def render_hub(namespace: str, records: list[Record], cards: list[str]) -> str:
     """Deterministic hub note: records grouped by kind, newest first, then the given companion card paths and the
-    dashboard, so an unchanged namespace renders identically and no note the server writes is a graph orphan."""
+    dashboard, so an unchanged namespace renders identically and no note the server writes is a graph orphan.
+
+    Records of the same second are ordered by path, not by file time, which differs on each synced machine.
+    """
     meta = {"title": f"Memory index: {namespace}", "namespace": namespace, "generated": True, "agent-written": True}
     lines = [HUB_BANNER, "", f"# {namespace}"]
     for kind in (*KINDS, RECEIPT_KIND):
-        group = sorted((record for record in records if record.kind == kind), key=lambda r: r.sort_key, reverse=True)
+        group = sorted(
+            (record for record in records if record.kind == kind), key=lambda r: (r.created, r.path), reverse=True
+        )
         if group:
             lines += ["", f"## {kind}", ""]
             lines += [f"- {wikilink(record.path, record.title)} ({record.created[:10]})" for record in group]

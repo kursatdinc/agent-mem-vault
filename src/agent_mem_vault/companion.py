@@ -27,9 +27,14 @@ def existing_cards(vault: Vault, namespace: str) -> list[str]:
 
 
 def card_namespace(vault: Vault, slug: str) -> str | None:
-    """The namespace a card of this namespace folder names in its frontmatter, if any names one of this folder."""
+    """The namespace a readable card of this namespace folder names in its frontmatter, if any names one of this
+    folder."""
     for path in existing_cards(vault, slug):
-        namespace = read_note((vault.root / path).read_text(encoding="utf-8"))[0].get("namespace")
+        try:
+            text = (vault.root / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        namespace = read_note(text)[0].get("namespace")
         if isinstance(namespace, str) and namespace_slug(namespace) == slug:
             return namespace
     return None
