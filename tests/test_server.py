@@ -119,14 +119,21 @@ def test_every_tool_replies_with_the_documented_texts(tmp_path):
     assert re.fullmatch(f"Context saved with ID: {UUID}", replies["save_context"])
     assert re.fullmatch(f"Memory saved with ID: {UUID}", replies["save_memory"])
     assert re.fullmatch(f"Snapshot created with ID: {UUID}", replies["snapshot"])
+    decision_id = re.search(UUID, replies["save_memory"]).group(0)[:8]
+    snapshot_id = re.search(UUID, replies["snapshot"]).group(0)[:8]
     assert re.fullmatch(
-        r"1\. \[decision\] \(alpha\) Pick storage - agent-a - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M",
+        r"1\. \[decision: accepted\] \(alpha\) Pick storage - agent-a - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M"
+        f" - id {decision_id}",
         replies["list"],
     )
     assert re.fullmatch(
-        r"1\. \[note\] \(alpha\) Planning - agent-a - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M", replies["search"]
+        r"1\. \[note\] \(alpha\) Planning - agent-a - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M - id [0-9a-f]{8}",
+        replies["search"],
     )
-    assert re.fullmatch(r"\*\*Brief\*\* - agent-a - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M\n\nState\.", replies["latest"])
+    assert re.fullmatch(
+        r"\*\*Brief\*\* - agent-a - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M" f" - id {snapshot_id}\n\nState\.",
+        replies["latest"],
+    )
     assert re.fullmatch(r"\*\*Brief\*\* - alpha - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M\n\nState\.", replies["brief"])
 
 

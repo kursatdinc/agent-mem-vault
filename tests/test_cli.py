@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 
 import pytest
@@ -77,10 +78,10 @@ def test_list_and_search_print_the_numbered_line_format(configured_vault, capsys
     assert main(["list", "--namespace", "alpha", "--kind", "decision"]) == 0
     listed = capsys.readouterr().out.splitlines()
     assert len(listed) == 1
-    assert listed[0].startswith("1. [decision] (alpha) Pick storage - planner - ")
+    assert re.fullmatch(r"1\. \[decision: accepted\] \(alpha\) Pick storage - planner - .* - id [0-9a-f]{8}", listed[0])
 
     assert main(["search", "markdown", "--namespace", "alpha"]) == 0
-    assert capsys.readouterr().out.startswith("1. [decision] (alpha) Pick storage - planner - ")
+    assert capsys.readouterr().out.startswith("1. [decision: accepted] (alpha) Pick storage - planner - ")
 
     assert main(["search", "nonexistent"]) == 0
     assert capsys.readouterr().out == "No matching memory found.\n"
