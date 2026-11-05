@@ -333,7 +333,8 @@ class Store:
         )
         if query:
             wanted = query_stems(sanitize_text(query, "query", INPUT_LIMITS["content"]))
-            scored = [(score(record, wanted), record) for record in records]
+            now = self.clock()
+            scored = [(score(record, wanted, now), record) for record in records]
             ranked = sorted((pair for pair in scored if pair[0] is not None), key=lambda pair: -pair[0])
             records = [record for _, record in ranked]
         return records[: normalize_limit(limit)]
