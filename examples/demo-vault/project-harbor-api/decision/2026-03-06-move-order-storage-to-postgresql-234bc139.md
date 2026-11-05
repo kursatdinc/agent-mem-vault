@@ -10,7 +10,7 @@ revision: 2
 visibility: internal
 validity: valid
 tags: [storage]
-status: accepted
+status: superseded
 supersedes: ['[[project-harbor-api/decision/2026-03-02-use-sqlite-for-the-first-release-d61740a1]]']
 superseded_by: '[[project-harbor-api/decision/2026-03-08-pin-postgresql-16-in-ci-and-production-eb0b3836]]'
 agent-written: true

@@ -28,7 +28,22 @@ Tags = Annotated[
 ]
 Supersedes = Annotated[
     list[str] | None,
-    Field(max_length=INPUT_LIMITS["tags"], description="Optional ids of records this one supersedes"),
+    Field(
+        max_length=INPUT_LIMITS["tags"],
+        description="Optional ids (or unique prefixes of 8+ characters) of records this one replaces; "
+        "a superseded decision becomes superseded and a superseded risk resolved",
+    ),
+]
+RecordId = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=INPUT_LIMITS["content"],
+        description="Record ID, or a unique prefix of at least 8 characters",
+    ),
+]
+ReviewBy = Annotated[
+    str | None, Field(max_length=10, description="Optional date to review a risk again, YYYY-MM-DD; risks only")
 ]
 OptionalAgent = Annotated[str | None, Field(max_length=INPUT_LIMITS["agent"], description="Optional agent filter")]
 IncludePrivate = Annotated[
@@ -87,7 +102,11 @@ def create_server(store: Store) -> MCPServer:
         title: _text("title", "Short descriptive title"),
         content: _text("content", "Full memory content"),
         namespace: Namespace = None,
-        status: _optional_text("status", "Optional status, for example: open, accepted, done") = None,
+        status: _optional_text(
+            "status",
+            "Optional status. decision: accepted (default) or superseded; risk: open (default), mitigated or "
+            "resolved; other kinds: free text",
+        ) = None,
         relatedFiles: Annotated[
             list[Annotated[str, Field(max_length=INPUT_LIMITS["file"])]] | None,
             Field(description="Optional related file paths"),
@@ -97,9 +116,22 @@ def create_server(store: Store) -> MCPServer:
         nextAction: _optional_text("title", "Optional next action") = None,
         tags: Tags = None,
         supersedes: Supersedes = None,
+        review_by: ReviewBy = None,
     ) -> str:
         record = store.save_memory(
-            agent, kind, title, content, namespace, status, relatedFiles, branch, commit, nextAction, tags, supersedes
+            agent,
+            kind,
+            title,
+            content,
+            namespace,
+            status,
+            relatedFiles,
+            branch,
+            commit,
+            nextAction,
+            tags,
+            supersedes,
+            review_by,
         )
         return f"Memory saved with ID: {record.id}"
 
@@ -143,8 +175,9 @@ def create_server(store: Store) -> MCPServer:
         title: _text("title", "Snapshot title"),
         content: _text("content", "Snapshot summary content"),
         namespace: Namespace = None,
+        supersedes: Supersedes = None,
     ) -> str:
-        record = store.create_snapshot(agent, title, content, namespace)
+        record = store.create_snapshot(agent, title, content, namespace, supersedes)
         return f"Snapshot created with ID: {record.id}"
 
     @tool("get_project_brief", "Read the latest snapshot for a namespace, or a generated brief from recent memory.")
@@ -158,11 +191,12 @@ def create_server(store: Store) -> MCPServer:
 
     @tool(
         "update_memory",
-        "Update the title, content, tags, status, visibility or validity of an existing record by ID. "
-        "Pass expected_revision to detect changes made since the record was last read.",
+        "Update the title, content, tags, status, review date, visibility or validity of an existing record by ID, "
+        "or let it supersede other records. Pass expected_revision to detect changes made since the record was "
+        "last read.",
     )
     def update_memory(
-        id: _text("content", "Record ID"),
+        id: RecordId,
         expected_revision: Annotated[
             int | None, Field(ge=1, description="Optional revision last read; a newer revision returns a conflict")
         ] = None,
@@ -172,14 +206,28 @@ def create_server(store: Store) -> MCPServer:
             list[Annotated[str, Field(max_length=INPUT_LIMITS["tag"])]] | None,
             Field(max_length=INPUT_LIMITS["tags"], description="New tags replacing all current tags"),
         ] = None,
-        status: _optional_text("status", "New status") = None,
+        status: _optional_text(
+            "status", "New status. decision: accepted or superseded; risk: open, mitigated or resolved"
+        ) = None,
         visibility: Annotated[Visibility | None, Field(description="New visibility")] = None,
         validity: Annotated[Validity | None, Field(description="New validity; rejected needs rejected_reason")] = None,
         rejected_reason: _optional_text("title", "Why the record is rejected") = None,
+        review_by: ReviewBy = None,
+        supersedes: Supersedes = None,
     ) -> str:
         try:
             record = store.update_memory(
-                id, expected_revision, title, content, tags, status, visibility, validity, rejected_reason
+                id,
+                expected_revision,
+                title,
+                content,
+                tags,
+                status,
+                visibility,
+                validity,
+                rejected_reason,
+                review_by,
+                supersedes,
             )
         except RevisionConflict as conflict:
             return (
@@ -189,7 +237,7 @@ def create_server(store: Store) -> MCPServer:
         return f"Memory updated. ID: {record.id}. Revision: {record.revision}" if record else "Memory not found."
 
     @tool("get_links", "List the outgoing links and the backlinks of a record by ID.")
-    def get_links(id: _text("content", "Record ID")) -> str:
+    def get_links(id: RecordId) -> str:
         found = store.get_links(id)
         return format_links(*found) if found else "Memory not found."
 

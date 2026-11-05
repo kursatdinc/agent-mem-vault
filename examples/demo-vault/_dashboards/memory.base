@@ -3,13 +3,15 @@ filters:
     - 'note["agent-written"] == true'
 views:
   - type: table
-    name: "Decisions and risks"
+    name: "Active decisions and risks"
     filters:
       and:
         - or:
             - 'note.kind == "decision"'
             - 'note.kind == "risk"'
         - 'note.validity == "valid"'
+        - 'note.status != "superseded"'
+        - 'note.status != "resolved"'
     groupBy:
       property: note.namespace
       direction: ASC
@@ -17,6 +19,7 @@ views:
       - file.name
       - note.kind
       - note.status
+      - note.review_by
       - note.created
   - type: table
     name: "All records"

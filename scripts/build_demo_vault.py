@@ -120,6 +120,7 @@ def _harbor_api(store: Store, clock: DemoClock) -> None:
         "production data. Writes queue up behind it.",
         ns,
         status="open",
+        review_by="2026-03-20",
         related_files=["migrations/0007_backfill_orders.sql"],
         next_action="Split the backfill into batches of 5000 rows",
         tags=["storage", "migration"],

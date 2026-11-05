@@ -15,7 +15,7 @@ def saved_decision(store, **overrides):
         "content": "Use Markdown files.",
         "namespace": "alpha",
         "tags": ["storage"],
-        "status": "proposed",
+        "status": "accepted",
     } | overrides
     return store.save_memory(**arguments)
 
@@ -28,7 +28,7 @@ def test_update_changes_fields_bumps_revision_and_never_renames_the_file(store, 
         title="Pick storage engine",
         content="Use Markdown files in an Obsidian vault.",
         tags=["storage", "obsidian"],
-        status="accepted",
+        status="superseded",
         visibility="private",
     )
 
@@ -37,7 +37,7 @@ def test_update_changes_fields_bumps_revision_and_never_renames_the_file(store, 
     assert updated.title == "Pick storage engine"
     assert updated.content == "Use Markdown files in an Obsidian vault."
     assert updated.tags == ["storage", "obsidian"]
-    assert updated.meta["status"] == "accepted"
+    assert updated.meta["status"] == "superseded"
     assert updated.meta["visibility"] == "private"
     assert updated.revision == 2
     assert updated.meta["updated"] == "2026-10-28T09:00:02Z"
@@ -59,7 +59,7 @@ def test_update_keeps_the_related_block_and_replaces_only_the_content(store, vau
 
 def test_a_stale_expected_revision_returns_a_conflict_naming_the_current_revision_and_writes_nothing(store, vault):
     record = saved_decision(store)
-    store.update_memory(record.id, status="accepted")
+    store.update_memory(record.id, title="Pick storage again")
     before = file_text(vault, record)
 
     with pytest.raises(RevisionConflict) as conflict:
@@ -73,7 +73,7 @@ def test_a_stale_expected_revision_returns_a_conflict_naming_the_current_revisio
 def test_a_matching_expected_revision_is_accepted(store):
     record = saved_decision(store)
 
-    updated = store.update_memory(record.id, expected_revision=1, status="accepted")
+    updated = store.update_memory(record.id, expected_revision=1, status="superseded")
 
     assert updated.revision == 2
 

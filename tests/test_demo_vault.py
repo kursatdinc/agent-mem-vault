@@ -23,12 +23,20 @@ def test_committed_demo_vault_parses_without_issues():
     assert not list(DEMO.glob("*/handoff"))
 
 
-def test_demo_vault_shows_supersedes_chain_and_a_rejected_idea():
+def test_demo_vault_shows_supersedes_chain_lifecycle_statuses_and_a_rejected_idea():
     records = {record.title: record for record in _scan().records}
 
     assert records["Use SQLite for the first release"].meta["superseded_by"].endswith("-234bc139]]")
     assert records["Move order storage to PostgreSQL"].meta["superseded_by"].endswith("-eb0b3836]]")
     assert "superseded_by" not in records["Pin PostgreSQL 16 in CI and production"].meta
+    assert {title: record.meta["status"] for title, record in records.items() if record.kind == "decision"} == {
+        "Use SQLite for the first release": "superseded",
+        "Cache order lookups in process memory": "accepted",
+        "Move order storage to PostgreSQL": "superseded",
+        "Pin PostgreSQL 16 in CI and production": "accepted",
+        "Sync offline first, reconcile on reconnect": "accepted",
+    }
+    assert records["Migration script locks the orders table"].meta["review_by"] == "2026-03-20"
     assert records["Cache order lookups in process memory"].meta["validity"] == "rejected"
 
 

@@ -10,6 +10,7 @@ revision: 2
 visibility: internal
 validity: rejected
 tags: [performance]
+status: accepted
 rejected_reason: Workers do not share memory, so cached orders go stale between processes.
 agent-written: true
 ---
