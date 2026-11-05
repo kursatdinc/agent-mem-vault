@@ -4,12 +4,12 @@ import re
 import subprocess
 import sys
 import time
+from datetime import UTC, datetime
 
 import pytest
 
 from agent_mem_vault.cli import main
 from agent_mem_vault.store import Store
-from conftest import TickingClock
 
 HOOKS_ON = "features:\n  hooks: true\n"
 STOP_NUDGE_TEXT = (
@@ -51,16 +51,22 @@ def run_cli(monkeypatch, capsys, argv, payload=None, raw=None):
     return code, captured.out, captured.err
 
 
-def save_snapshot(vault, namespace, content="Snapshot body."):
-    Store(vault, clock=TickingClock()).create_snapshot(
-        agent="a", title="Demo state", content=content, namespace=namespace
+def save_snapshot(vault, namespace, content="Snapshot body.", clock=None):
+    store = Store(vault) if clock is None else Store(vault, clock=clock)
+    return store.create_snapshot(agent="a", title="Demo state", content=content, namespace=namespace)
+
+
+def brief_of(snapshot):
+    return (
+        f"**Project brief for {snapshot.namespace}**\n\n"
+        f"## Snapshot: Demo state ({snapshot.created[:10]}, id {snapshot.id[:8]})\nSnapshot body."
     )
 
 
 def test_session_start_for_claude_prints_the_brief_as_hook_json_for_the_git_root_namespace(
     hooks_vault, repo, monkeypatch, capsys
 ):
-    save_snapshot(hooks_vault, "project/demo-repo")
+    snapshot = save_snapshot(hooks_vault, "project/demo-repo")
 
     code, out, _ = run_cli(
         monkeypatch, capsys, ["hook", "session-start", "--client", "claude"], {"cwd": str(repo / "src")}
@@ -68,20 +74,17 @@ def test_session_start_for_claude_prints_the_brief_as_hook_json_for_the_git_root
 
     assert code == 0
     assert json.loads(out) == {
-        "hookSpecificOutput": {
-            "hookEventName": "SessionStart",
-            "additionalContext": "**Demo state** - project/demo-repo - 10/28/2026, 9:00:01 AM\n\nSnapshot body.",
-        }
+        "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": brief_of(snapshot)}
     }
 
 
 def test_session_start_for_codex_prints_plain_text(hooks_vault, repo, monkeypatch, capsys):
-    save_snapshot(hooks_vault, "project/demo-repo")
+    snapshot = save_snapshot(hooks_vault, "project/demo-repo")
 
     code, out, _ = run_cli(monkeypatch, capsys, ["hook", "session-start", "--client", "codex"], {"cwd": str(repo)})
 
     assert code == 0
-    assert out == "**Demo state** - project/demo-repo - 10/28/2026, 9:00:01 AM\n\nSnapshot body.\n"
+    assert out == brief_of(snapshot) + "\n"
 
 
 def test_outside_a_git_repository_the_namespace_falls_back_to_the_cwd_basename(
@@ -92,11 +95,7 @@ def test_outside_a_git_repository_the_namespace_falls_back_to_the_cwd_basename(
 
     _, out, _ = run_cli(monkeypatch, capsys, ["hook", "session-start", "--client", "codex"], {"cwd": str(plain)})
 
-    assert re.fullmatch(
-        r"\*\*Project brief for project/plain-dir\*\* - project/plain-dir - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M\n\n"
-        r"No saved memory found for namespace: project/plain-dir\n",
-        out,
-    )
+    assert out == "**Project brief for project/plain-dir**\n\nNo saved memory found for namespace: project/plain-dir\n"
 
 
 def test_the_session_context_is_capped_at_9000_characters(hooks_vault, repo, monkeypatch, capsys):
@@ -107,6 +106,17 @@ def test_the_session_context_is_capped_at_9000_characters(hooks_vault, repo, mon
     context = json.loads(out)["hookSpecificOutput"]["additionalContext"]
     assert len(context) == 9000
     assert context.endswith("zzz\n[brief truncated]")
+
+
+def test_a_capped_brief_keeps_its_consolidation_line(hooks_vault, repo, monkeypatch, capsys):
+    save_snapshot(
+        hooks_vault, "project/demo-repo", content="z" * 20_000, clock=lambda: datetime(2026, 1, 1, tzinfo=UTC)
+    )
+
+    _, out, _ = run_cli(monkeypatch, capsys, ["hook", "session-start", "--client", "codex"], {"cwd": str(repo)})
+
+    assert len(out) == 9001
+    assert re.search(r"zzz\n\[brief truncated\]\nConsolidation due: latest snapshot is \d+ days old\n\Z", out)
 
 
 def test_hooks_print_nothing_and_exit_zero_while_the_feature_is_off(configured_vault, repo, monkeypatch, capsys):
@@ -254,7 +264,8 @@ def test_session_start_finishes_within_the_hook_timeout_on_a_5000_record_vault(t
 
     context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
     assert result.returncode == 0
-    assert context.startswith("**Project brief for project/p1** - project/p1 - ")
+    assert context.startswith("**Project brief for project/p1**\n\n## Active records\n- [")
     assert context.count("\n- [") == 10
+    assert context.endswith("- ... and 990 more\n\nConsolidation due: no snapshot yet and 1000 active records")
     # The generated client config gives hooks 5 s; the best of three runs keeps a busy CI runner from failing it.
     assert min(timings) < 3.0

@@ -6,15 +6,8 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
-from agent_mem_vault.companion import format_companion
-from agent_mem_vault.format import (
-    format_brief,
-    format_issues,
-    format_links,
-    format_records,
-    format_timestamp,
-    short_id,
-)
+from agent_mem_vault.companion import THREAD_FORMAT, format_companion
+from agent_mem_vault.format import format_brief, format_issues, format_links, format_records, format_timestamp
 from agent_mem_vault.records import KINDS, RECEIPT_KIND
 from agent_mem_vault.sanitize import INPUT_LIMITS
 from agent_mem_vault.store import Store
@@ -150,7 +143,7 @@ def create_server(store: Store) -> MCPServer:
         if record is None:
             return "No context found."
         return (
-            f"**{record.title}** - {record.agent} - {format_timestamp(record.created)} - id {short_id(record)}"
+            f"**{record.title}** - {record.agent} - {format_timestamp(record.created)} - id {record.short_id}"
             f"\n\n{record.content}"
         )
 
@@ -190,11 +183,15 @@ def create_server(store: Store) -> MCPServer:
         record = store.create_snapshot(agent, title, content, namespace, supersedes)
         return f"Snapshot created with ID: {record.id}"
 
-    @tool("get_project_brief", "Read the latest snapshot for a namespace, or a generated brief from recent memory.")
+    @tool(
+        "get_project_brief",
+        "Read the project brief: the last-session and threads cards, the latest snapshot, the active records "
+        "created since it, and a closing 'Consolidation due: <reason>' line when the memory needs consolidating.",
+    )
     def get_project_brief(
         namespace: Namespace = None,
         limit: Annotated[
-            float | None, Field(description="Maximum number of recent items to include when no snapshot exists")
+            float | None, Field(description="Maximum number of active records to list, default: 10")
         ] = None,
     ) -> str:
         return format_brief(store.get_project_brief(namespace, limit))
@@ -279,25 +276,29 @@ def create_server(store: Store) -> MCPServer:
 
     if store.companion_max_chars is not None:
 
-        @tool(
-            "get_companion",
-            "Read the last-session and threads companion cards of a namespace: short notes from the previous session.",
-        )
+        @tool("get_companion", "Read the last-session and threads companion cards of a namespace.")
         def get_companion(namespace: Namespace = None) -> str:
             return format_companion(store.get_companion(namespace))
 
         @tool(
             "update_companion",
-            "Replace the last-session and/or threads companion card of a namespace. "
-            f"Each card is limited to {store.companion_max_chars} characters: keep them short and compact old text "
-            "when rewriting.",
+            "Replace the last-session and/or threads companion card of a namespace; each call overwrites the whole "
+            "card. last_session: what this session did, what is still unverified, and the next step. threads: one "
+            f'line per open work thread, "{THREAD_FORMAT}"; drop the line when the thread is done and pass an empty '
+            f"string when no thread is open. Each card is limited to {store.companion_max_chars} characters.",
         )
         def update_companion(
             namespace: Namespace = None,
             last_session: _optional_text(
-                "content", "New last-session card: what the last session did and left open"
+                "content", "New last-session card: what was done, what is unverified, the next step"
             ) = None,
-            threads: _optional_text("content", "New threads card: open threads to pick up") = None,
+            threads: Annotated[
+                str | None,
+                Field(
+                    max_length=INPUT_LIMITS["content"],
+                    description=f'New threads card, one "{THREAD_FORMAT}" line per open thread; empty for none',
+                ),
+            ] = None,
         ) -> str:
             store.update_companion(namespace, last_session, threads)
             return "Companion updated."

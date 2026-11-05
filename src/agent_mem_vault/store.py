@@ -1,12 +1,21 @@
 import re
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass, replace
-from datetime import UTC, date, datetime
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from agent_mem_vault import git
-from agent_mem_vault.companion import CARD_FILES, OWNER_MARKER, Companion, card_relpath, read_card, render_card
+from agent_mem_vault.companion import (
+    CARD_FILES,
+    OWNER_MARKER,
+    Companion,
+    card_relpath,
+    card_sections,
+    check_threads,
+    read_card,
+    render_card,
+)
 from agent_mem_vault.generated import DASHBOARD, DASHBOARD_RELPATH, hub_relpath, render_hub
 from agent_mem_vault.links import Links, link_report
 from agent_mem_vault.records import (
@@ -42,14 +51,14 @@ VALIDITIES = ("valid", "rejected")
 LIFECYCLES = {"decision": ("accepted", "superseded"), "risk": ("open", "mitigated", "resolved")}
 CLOSED_BY_SUPERSEDE = {"decision": "superseded", "risk": "resolved"}
 MIN_ID_PREFIX = 8
+CONSOLIDATION_AGE = timedelta(days=7)
+CONSOLIDATION_DUE = "Consolidation due: "
 _REVIEW_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 @dataclass(frozen=True)
 class Brief:
-    title: str
     namespace: str
-    created: str
     content: str
 
 
@@ -255,7 +264,12 @@ class Store:
         for card, value in (("last_session", last_session), ("threads", threads)):
             if value is None:
                 continue
+            if card == "threads" and isinstance(value, str) and not value.strip():
+                texts[card] = ""
+                continue
             text = self._redacted(sanitize_text(value, card, INPUT_LIMITS["content"]))
+            if card == "threads":
+                check_threads(text)
             if len(text) > limit:
                 raise ValueError(
                     f"{card} is {len(text)} characters, over the {limit} character limit: "
@@ -323,31 +337,47 @@ class Store:
         return records[: normalize_limit(limit)]
 
     def get_project_brief(self, namespace: str | None = None, limit: float | None = None) -> Brief:
+        """Companion cards, the latest snapshot, the active records created after it, and whether to consolidate."""
         safe_namespace = self._namespace(namespace)
-        brief = self._brief(safe_namespace, limit)
-        last_session = read_card(self.vault, safe_namespace, "last_session") if self.companion_max_chars else None
-        if last_session is None:
-            return brief
-        return replace(brief, content=f"{brief.content}\n\n## Last session\n{last_session}")
-
-    # Internals
-
-    def _brief(self, safe_namespace: str, limit: float | None) -> Brief:
         records = [
             record
             for record in self._select(safe_namespace)
             if record.meta.get("visibility") != "private" and record.meta.get("validity") != "rejected"
         ]
-        snapshot = next((record for record in records if record.kind == "snapshot"), None)
+        snapshot = next((r for r in records if r.kind == "snapshot" and not r.meta.get("superseded_by")), None)
+        active = [
+            record
+            for record in records
+            if record.kind != "snapshot"
+            and _is_active(record)
+            and (snapshot is None or record.sort_key > snapshot.sort_key)
+        ]
+        sections = card_sections(self.get_companion(safe_namespace)) if self.companion_max_chars is not None else []
         if snapshot is not None:
-            return Brief(snapshot.title, snapshot.namespace, snapshot.created, snapshot.content)
-        recent = records[: normalize_limit(limit)]
-        content = (
-            "\n".join(f"- [{record.kind}] {record.title} ({record.agent}): {record.content}" for record in recent)
-            if recent
-            else f"No saved memory found for namespace: {safe_namespace}"
-        )
-        return Brief(f"Project brief for {safe_namespace}", safe_namespace, utc_timestamp(self.clock()), content)
+            sections.append(
+                f"## Snapshot: {snapshot.title} ({snapshot.created[:10]}, id {snapshot.short_id})\n{snapshot.content}"
+            )
+        if active:
+            shown = active[: normalize_limit(limit)]
+            lines = [f"- [{record.kind}] {record.title} - id {record.short_id}" for record in shown]
+            if len(active) > len(shown):
+                lines.append(f"- ... and {len(active) - len(shown)} more")
+            heading = "Since the snapshot" if snapshot is not None else "Active records"
+            sections.append(f"## {heading}\n" + "\n".join(lines))
+        if reason := self._consolidation_reason(snapshot, len(active)):
+            sections.append(CONSOLIDATION_DUE + reason)
+        return Brief(safe_namespace, "\n\n".join(sections) or f"No saved memory found for namespace: {safe_namespace}")
+
+    # Internals
+
+    def _consolidation_reason(self, snapshot: Record | None, active: int) -> str | None:
+        if snapshot is None:
+            return f"no snapshot yet and {active} active record{'' if active == 1 else 's'}" if active else None
+        try:
+            age = self.clock() - datetime.fromisoformat(snapshot.created)
+        except (TypeError, ValueError):
+            return None
+        return f"latest snapshot is {age.days} days old" if age > CONSOLIDATION_AGE else None
 
     def _companion_limit(self) -> int:
         if self.companion_max_chars is None:
@@ -543,6 +573,10 @@ class Store:
             return self._revised(current, meta, replace_related(current.body, lines))
 
         self.vault.update_file(target.path, rebuild)
+
+
+def _is_active(record: Record) -> bool:
+    return not record.meta.get("superseded_by") and record.meta.get("status") not in CLOSED_BY_SUPERSEDE.values()
 
 
 def _resolve(records: list[Record], wanted: str) -> Record | None:

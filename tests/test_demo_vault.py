@@ -3,7 +3,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from agent_mem_vault.companion import check_threads
 from agent_mem_vault.links import link_report
+from agent_mem_vault.store import Store
 from agent_mem_vault.vault import Vault
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,6 +40,18 @@ def test_demo_vault_shows_supersedes_chain_lifecycle_statuses_and_a_rejected_ide
     }
     assert records["Migration script locks the orders table"].meta["review_by"] == "2026-03-20"
     assert records["Cache order lookups in process memory"].meta["validity"] == "rejected"
+
+
+def test_demo_vault_keeps_open_work_in_the_companion_cards():
+    store = Store(Vault(DEMO), companion_max_chars=3000)
+    harbor = store.get_companion("project/harbor-api")
+    lantern = store.get_companion("project/lantern-mobile")
+
+    assert harbor.last_session.startswith("Pinned PostgreSQL 16")
+    assert [line.split(":")[0] for line in harbor.threads.splitlines()] == ["- feat/batch-backfill", "- retry-policy"]
+    assert lantern.threads.startswith("- fix/push-token-refresh: ")
+    check_threads(harbor.threads)
+    check_threads(lantern.threads)
 
 
 def test_demo_vault_has_no_unresolved_links():

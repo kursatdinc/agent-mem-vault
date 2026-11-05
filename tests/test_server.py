@@ -13,6 +13,8 @@ TOOLS = {
     "search_memory",
     "get_links",
     "list_issues",
+    "get_companion",
+    "update_companion",
 }
 HANDOFF_TOOLS = {"create_handoff", "read_handoff", "peek_handoff", "list_handoffs", "ack_handoff", "reopen_handoff"}
 UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
@@ -111,11 +113,7 @@ def test_every_tool_replies_with_the_documented_texts(tmp_path):
     assert replies["empty_list"] == "No saved context yet."
     assert replies["empty_search"] == "No matching memory found."
     assert replies["empty_latest"] == "No context found."
-    assert re.fullmatch(
-        r"\*\*Project brief for alpha\*\* - alpha - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M\n\n"
-        r"No saved memory found for namespace: alpha",
-        replies["empty_brief"],
-    )
+    assert replies["empty_brief"] == "**Project brief for alpha**\n\nNo saved memory found for namespace: alpha"
     assert re.fullmatch(f"Context saved with ID: {UUID}", replies["save_context"])
     assert re.fullmatch(f"Memory saved with ID: {UUID}", replies["save_memory"])
     assert re.fullmatch(f"Snapshot created with ID: {UUID}", replies["snapshot"])
@@ -134,7 +132,11 @@ def test_every_tool_replies_with_the_documented_texts(tmp_path):
         r"\*\*Brief\*\* - agent-a - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M" f" - id {snapshot_id}\n\nState\.",
         replies["latest"],
     )
-    assert re.fullmatch(r"\*\*Brief\*\* - alpha - \d+/\d+/\d{4}, \d+:\d{2}:\d{2} [AP]M\n\nState\.", replies["brief"])
+    assert re.fullmatch(
+        r"\*\*Project brief for alpha\*\*\n\n"
+        rf"## Snapshot: Brief \(\d{{4}}-\d{{2}}-\d{{2}}, id {snapshot_id}\)\nState\.",
+        replies["brief"],
+    )
 
 
 def test_invalid_input_is_reported_as_a_tool_error_and_writes_nothing(tmp_path):

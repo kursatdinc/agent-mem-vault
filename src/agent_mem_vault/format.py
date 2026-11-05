@@ -17,16 +17,12 @@ def format_timestamp(timestamp: str) -> str:
     return f"{moment.month}/{moment.day}/{moment.year}, {hour}:{moment.minute:02d}:{moment.second:02d} {meridiem}"
 
 
-def short_id(record: Record) -> str:
-    return record.id[:8]
-
-
 def format_record(record: Record, index: int, mark_rejected: bool = False) -> str:
     status = f": {record.meta['status']}" if record.meta.get("status") else ""
     rejected = " [rejected]" if mark_rejected and record.meta.get("validity") == "rejected" else ""
     return (
         f"{index + 1}. [{record.kind}{status}{rejected}] ({record.namespace}) "
-        f"{record.title} - {record.agent} - {format_timestamp(record.created)} - id {short_id(record)}"
+        f"{record.title} - {record.agent} - {format_timestamp(record.created)} - id {record.short_id}"
     )
 
 
@@ -35,7 +31,7 @@ def format_records(records: list[Record], mark_rejected: bool = False) -> str:
 
 
 def format_brief(brief: Brief) -> str:
-    return f"**{brief.title}** - {brief.namespace} - {format_timestamp(brief.created)}\n\n{brief.content}"
+    return f"**Project brief for {brief.namespace}**\n\n{brief.content}"
 
 
 def format_links(record: Record, links: Links) -> str:

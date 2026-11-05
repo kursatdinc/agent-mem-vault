@@ -23,7 +23,7 @@ class Config:
     default_namespace: str = "default"
     redact_secrets: bool = True
     receipts: bool = False
-    companion: bool = False
+    companion: bool = True
     visibility: bool = True
     hooks: bool = False
     git_autocommit: bool = False
@@ -88,7 +88,7 @@ def load_config(env: Mapping[str, str] | None = None) -> Config:
         default_namespace=namespace,
         redact_secrets=_parse_bool(redact, ENV_REDACT if ENV_REDACT in env else "redact_secrets"),
         receipts=_parse_bool(features.get("receipts", False), "features.receipts"),
-        companion=_parse_bool(features.get("companion", False), "features.companion"),
+        companion=_parse_bool(features.get("companion", True), "features.companion"),
         visibility=_parse_bool(features.get("visibility", True), "features.visibility"),
         hooks=_parse_bool(features.get("hooks", False), "features.hooks"),
         git_autocommit=_parse_bool(features.get("git_autocommit", False), "features.git_autocommit"),
