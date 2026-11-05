@@ -6,6 +6,7 @@ from agent_mem_vault.config import Config, ConfigError, load_config
 from agent_mem_vault.doctor import run_doctor
 from agent_mem_vault.format import format_records
 from agent_mem_vault.hooks import CLIENTS, run_hook
+from agent_mem_vault.migrate import Move, archive_legacy_handoffs, legacy_handoffs
 from agent_mem_vault.runtime import open_store
 from agent_mem_vault.vault import VaultError
 
@@ -35,6 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--kind")
     search.add_argument("--tag", action="append", dest="tags")
     search.add_argument("--include-private", action="store_true")
+
+    migrate = commands.add_parser("migrate", help="archive the handoff records left by agent-mem-vault 1.x")
+    mode = migrate.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--dry-run", action="store_true", help="print what would move and change nothing")
+    mode.add_argument("--apply", action="store_true", help="move them and commit when the vault is a git work tree")
 
     hook = commands.add_parser("hook", help="client hook entry points; they need features.hooks")
     events = hook.add_subparsers(dest="action", required=True)
@@ -67,12 +73,36 @@ def _print_records(records: list, empty: str, mark_rejected: bool = False) -> in
     return 0
 
 
+def _migrate(store, apply: bool) -> int:
+    moves = archive_legacy_handoffs(store) if apply else legacy_handoffs(store.vault.root)
+    if not moves:
+        print("No legacy handoffs found.")
+        return 0
+    for move in moves:
+        print(_move_line(move, apply))
+    count = sum(not move.blocked for move in moves)
+    noun = "handoff" if count == 1 else "handoffs"
+    if apply:
+        print(f"Moved {count} legacy {noun}.")
+    else:
+        print(f"Dry run: {count} legacy {noun} to move. Run `agent-mem-vault migrate --apply` to move them.")
+    return 0
+
+
+def _move_line(move: Move, apply: bool) -> str:
+    if move.blocked:
+        return f"skipped {move.source}: {move.target} already exists"
+    return f"{'moved' if apply else 'would move'} {move.source} -> {move.target}"
+
+
 def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command is None:
         return _run_server(config)
     if args.command == "doctor":
         return run_doctor(config)
     store = open_store(config)
+    if args.command == "migrate":
+        return _migrate(store, args.apply)
     if args.command == "list":
         records = store.list_contexts(
             args.namespace, args.agent, args.tags, args.kind, args.limit, args.include_private

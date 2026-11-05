@@ -5,6 +5,7 @@ from collections import Counter
 from agent_mem_vault import git
 from agent_mem_vault.config import Config
 from agent_mem_vault.links import normalized_target, unresolved_targets
+from agent_mem_vault.migrate import legacy_handoffs
 from agent_mem_vault.runtime import open_vault
 from agent_mem_vault.vault import Vault
 
@@ -32,6 +33,8 @@ def run_doctor(config: Config) -> int:
     print(f"issues: {len(scan.issues)}")
     for issue in scan.issues:
         print(f"  {issue.path}: {issue.reason}")
+    if legacy := legacy_handoffs(vault.root):
+        print(f"legacy handoffs: {len(legacy)} (archive them with: agent-mem-vault migrate --apply)")
     print(f"tmp leftovers: {len(leftovers)}")
     for path in leftovers:
         print(f"  {path.name}")
