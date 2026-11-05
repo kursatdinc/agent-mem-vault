@@ -167,7 +167,7 @@ Every parameter is documented in the
 ```text
 agent-memory/                         # your Obsidian vault
 ├── project-harbor-api/
-│   ├── project-harbor-api.md         # generated hub: every record of the project
+│   ├── project-harbor-api.md         # generated hub: the records, the cards and the dashboard
 │   ├── _companion/last-session.md    # what the last session did, what is unverified, next step
 │   ├── _companion/threads.md         # one line per open work thread
 │   ├── decision/2026-03-06-move-order-storage-to-postgresql-234bc139.md

@@ -100,8 +100,11 @@ file at one of those paths without `kind: companion` is never overwritten.
 ## Generated files
 
 - `<namespace-slug>/<namespace-slug>.md`: a hub note named after its folder, so Obsidian's graph labels it
-  with the project name. It links every record of the namespace, grouped by kind, newest first. It carries `generated: true`, is rewritten on each write, and is never written over a
-  file that does not carry that marker.
+  with the project name. It links every record of the namespace, grouped by kind, newest first, then
+  the companion cards that exist and the dashboard. It carries `generated: true`, is rewritten on each
+  write (a companion card write included), and is never written over a file that does not carry that
+  marker. A namespace left with no records and no cards loses its generated hub; run
+  `agent-mem-vault rebuild-hubs` after deleting or moving notes by hand.
 - `_dashboards/memory.base`: created once if absent, then left to you.
 
 ## Hand edits
