@@ -340,20 +340,28 @@ class Store:
         return records[: normalize_limit(limit)]
 
     def get_project_brief(self, namespace: str | None = None, limit: float | None = None) -> Brief:
-        """Companion cards, the latest snapshot, the active records created after it, and whether to consolidate."""
+        """Companion cards, the latest snapshot, the active records created after it, and whether to consolidate.
+
+        Records of the same second are ordered by path and count as after the snapshot only when created later, never
+        by file time, which differs on each synced machine.
+        """
         safe_namespace = self._namespace(namespace)
-        records = [
-            record
-            for record in self._select(safe_namespace)
-            if record.meta.get("visibility") != "private" and record.meta.get("validity") != "rejected"
-        ]
+        records = sorted(
+            (
+                record
+                for record in self._select(safe_namespace)
+                if record.meta.get("visibility") != "private" and record.meta.get("validity") != "rejected"
+            ),
+            key=lambda record: (record.created, record.path),
+            reverse=True,
+        )
         snapshot = next((r for r in records if r.kind == "snapshot" and not r.meta.get("superseded_by")), None)
         active = [
             record
             for record in records
             if record.kind != "snapshot"
             and _is_active(record)
-            and (snapshot is None or record.sort_key > snapshot.sort_key)
+            and (snapshot is None or record.created > snapshot.created)
         ]
         sections = card_sections(self.get_companion(safe_namespace)) if self.companion_max_chars is not None else []
         if snapshot is not None:

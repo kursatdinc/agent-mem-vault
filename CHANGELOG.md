@@ -31,6 +31,14 @@ were closed, and search favours recent records.
   three quarters at 30 days and never less than half. A record with more than twice another's text
   score still ranks above it however old it is; ties still go to the newest record.
 
+### Fixed
+
+- The brief ordered records created in the same second, picked between snapshots of one second, and
+  decided whether a record from the snapshot's second came after it by file modification time, which
+  differs on each machine that syncs the vault, so two machines could show different briefs. It now
+  orders them by path, like the hub, and lists only records whose `created` is later than the
+  snapshot's.
+
 ### Upgrading from 2.0.x
 
 Upgrade the package; no migration is needed. A `review_by` argument is ignored, so a call that also
