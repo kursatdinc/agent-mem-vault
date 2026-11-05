@@ -363,7 +363,7 @@ class Store:
             )
         if active:
             shown = active[: normalize_limit(limit)]
-            lines = [f"- [{record.kind}] {record.title} - id {record.short_id}" for record in shown]
+            lines = [f"- [{_kind_and_status(record)}] {record.title} - id {record.short_id}" for record in shown]
             if len(active) > len(shown):
                 lines.append(f"- ... and {len(active) - len(shown)} more")
             heading = "Since the snapshot" if snapshot is not None else "Active records"
@@ -626,6 +626,11 @@ class Store:
 
 def _is_active(record: Record) -> bool:
     return not record.meta.get("superseded_by") and record.meta.get("status") not in CLOSED_BY_SUPERSEDE.values()
+
+
+def _kind_and_status(record: Record) -> str:
+    status = record.meta.get("status")
+    return f"{record.kind}: {status}" if status else record.kind
 
 
 def _resolve(records: list[Record], wanted: str) -> Record | None:
