@@ -26,6 +26,15 @@ def existing_cards(vault: Vault, namespace: str) -> list[str]:
     return [path for card in CARD_FILES if (vault.root / (path := card_relpath(namespace, card))).is_file()]
 
 
+def card_namespace(vault: Vault, slug: str) -> str | None:
+    """The namespace a card of this namespace folder names in its frontmatter, if any names one of this folder."""
+    for path in existing_cards(vault, slug):
+        namespace = read_note((vault.root / path).read_text(encoding="utf-8"))[0].get("namespace")
+        if isinstance(namespace, str) and namespace_slug(namespace) == slug:
+            return namespace
+    return None
+
+
 def render_card(namespace: str, text: str, updated: str) -> str:
     meta = {"kind": "companion", "namespace": namespace, "updated": updated, "agent-written": True}
     return render_record(meta, text + "\n")

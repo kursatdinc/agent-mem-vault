@@ -10,6 +10,7 @@ from agent_mem_vault.companion import (
     CARD_FILES,
     OWNER_MARKER,
     Companion,
+    card_namespace,
     card_relpath,
     card_sections,
     check_threads,
@@ -25,6 +26,7 @@ from agent_mem_vault.records import (
     build_body,
     namespace_slug,
     parse_record,
+    read_note,
     record_relpath,
     render_record,
     replace_related,
@@ -471,20 +473,61 @@ class Store:
         if self.git_autocommit:
             git.autocommit(self.vault.root, touched, f"avm: {op} {record.kind} {record.id[:8]}")
 
+    def rebuild_hubs(self, slugs: list[str] | None = None) -> tuple[list[str], list[str]]:
+        """Rebuild the hubs of these namespace folders, or of all, and commit; returns touched paths, unknown slugs."""
+        with self.vault.lock():
+            touched, unknown = self.refresh_hubs(slugs)
+            if self.git_autocommit and touched:
+                git.autocommit(self.vault.root, touched, "avm: rebuild hubs")
+            return touched, unknown
+
+    def refresh_hubs(self, slugs: list[str] | None = None) -> tuple[list[str], list[str]]:
+        """`rebuild_hubs` without the lock and the commit, for a caller that holds the lock."""
+        names = {namespace_slug(r.namespace): r.namespace for r in reversed(self._newest_first())}
+        folders = {
+            path.name
+            for path in self.vault.root.iterdir()
+            if path.is_dir() and not path.is_symlink() and namespace_slug(path.name) == path.name
+        }
+        known = folders | names.keys()
+        wanted = sorted(known) if slugs is None else list(dict.fromkeys(slugs))
+        touched: list[str] = []
+        for slug in wanted:
+            if slug in known:
+                touched += self.refresh_generated(names.get(slug) or card_namespace(self.vault, slug) or slug)
+        return touched, [slug for slug in wanted if slug not in known]
+
     def refresh_generated(self, namespace: str) -> list[str]:
+        """Rewrite the namespace hub and create the dashboard if absent; a namespace without records or cards loses its
+        generated hub. Returns the changed paths; failures are logged, never raised. The caller holds the lock."""
         touched: list[str] = []
         try:
             hub = hub_relpath(namespace)
             slug = namespace_slug(namespace)
             siblings = [r for r in self.vault.scan().records if namespace_slug(r.namespace) == slug]
-            if self.vault.write_generated(hub, render_hub(namespace, siblings, existing_cards(self.vault, namespace))):
+            cards = existing_cards(self.vault, namespace)
+            if not siblings and not cards:
+                return self._remove_hub(hub)
+            if self.vault.write_generated(hub, render_hub(namespace, siblings, cards)):
                 touched.append(hub)
             if not (self.vault.root / DASHBOARD_RELPATH).exists():
                 self.vault.write_new(DASHBOARD_RELPATH, DASHBOARD)
                 touched.append(DASHBOARD_RELPATH)
-        except (OSError, VaultError) as error:
+        except (OSError, UnicodeDecodeError, VaultError) as error:
             log(f"could not refresh generated notes: {error}")
         return touched
+
+    def _remove_hub(self, relpath: str) -> list[str]:
+        """Delete a hub the server generated, and its folder once empty; a note a human wrote there stays."""
+        path = self.vault.root / relpath
+        if path.is_symlink() or not path.is_file():
+            return []
+        if read_note(path.read_text(encoding="utf-8"))[0].get("generated") is not True:
+            return []
+        path.unlink()
+        if not any(path.parent.iterdir()):
+            path.parent.rmdir()
+        return [relpath]
 
     def _revised(self, current: Record, meta: dict[str, Any], body: str | None = None) -> str:
         meta["revision"] = current.revision + 1

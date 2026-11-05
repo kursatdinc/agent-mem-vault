@@ -47,9 +47,18 @@ def inside_work_tree(root: Path) -> bool:
 
 
 def autocommit(root: Path, relpaths: list[str], message: str) -> None:
-    """Commit exactly these paths with the user's own git identity. Never pushes; failures are only logged."""
+    """Commit exactly these paths with the user's own git identity. Never pushes; failures are only logged.
+
+    A path that is neither on disk nor tracked (a file created and removed between commits) is left out.
+    """
     try:
         if not inside_work_tree(root):
+            return
+        missing = {path for path in relpaths if not (root / path).exists()}
+        if missing:
+            tracked = set(run_git(root, "ls-files", "-z", "--", *missing).split("\0"))
+            relpaths = [path for path in relpaths if path not in missing or path in tracked]
+        if not relpaths:
             return
         run_git(root, "add", "--", *relpaths)
         run_git(root, "commit", "-m", message, "--", *relpaths)

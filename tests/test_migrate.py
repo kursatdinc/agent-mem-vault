@@ -76,7 +76,7 @@ def test_apply_archives_every_legacy_handoff_rewrites_their_links_and_refreshes_
 
     out = capsys.readouterr().out.splitlines()
     assert out[0] == f"moved beta/handoff/{FIRST} -> beta/_archive/handoffs/{FIRST}"
-    assert out[-1] == "Moved 3 legacy handoffs."
+    assert out[-2:] == ["Moved 3 legacy handoffs.", "wrote project-alpha/project-alpha.md"]
     assert not (root / "project-alpha" / "handoff").exists()
     assert not (root / "beta" / "handoff").exists()
     archived = (root / "project-alpha" / "_archive" / "handoffs" / SECOND).read_bytes()
@@ -98,7 +98,7 @@ def test_apply_again_finds_nothing_and_a_clean_vault_says_so(legacy_vault, capsy
     capsys.readouterr()
 
     assert main(["migrate", "--apply"]) == 0
-    assert capsys.readouterr().out == "No legacy handoffs found.\n"
+    assert capsys.readouterr().out == "No legacy handoffs found.\nHubs are up to date.\n"
     assert main(["migrate", "--dry-run"]) == 0
     assert capsys.readouterr().out == "No legacy handoffs found.\n"
 
@@ -112,7 +112,7 @@ def test_a_taken_archive_path_is_skipped_and_the_handoff_stays(legacy_vault, cap
 
     out = capsys.readouterr().out.splitlines()
     assert f"skipped beta/handoff/{FIRST}: beta/_archive/handoffs/{FIRST} already exists" in out
-    assert out[-1] == "Moved 2 legacy handoffs."
+    assert out[-2:] == ["Moved 2 legacy handoffs.", "wrote project-alpha/project-alpha.md"]
     assert taken.read_text(encoding="utf-8") == "mine\n"
     assert (legacy_vault.root / "beta" / "handoff" / FIRST).is_file()
 
@@ -164,3 +164,29 @@ def test_doctor_points_at_migrate_while_legacy_handoffs_remain(legacy_vault, cap
     capsys.readouterr()
     assert main(["doctor"]) == 0
     assert "legacy handoffs" not in capsys.readouterr().out
+
+
+def test_apply_on_a_vault_without_legacy_handoffs_still_rebuilds_and_commits_every_hub(configured_vault, capsys):
+    root = configured_vault.root
+    store = Store(configured_vault, clock=TickingClock(), companion_max_chars=100)
+    store.save_context(agent="a", title="Kept", content="c", namespace="alpha")
+    store.update_companion("alpha", threads="- main: wiring; next: test")
+    hub = root / "alpha" / "alpha.md"
+    hub.write_text(hub.read_text(encoding="utf-8").split("\n\n## companion")[0] + "\n", encoding="utf-8")
+    git(root, "init", "-q", "-b", "main")
+    git(root, "config", "user.name", "Dana Tester")
+    git(root, "config", "user.email", "dana@example.invalid")
+    git(root, "config", "commit.gpgsign", "false")
+    (root / ".gitignore").write_text(".agent-mem-vault/\n", encoding="utf-8")
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "before")
+
+    assert main(["migrate", "--apply"]) == 0
+
+    assert capsys.readouterr().out.splitlines() == ["No legacy handoffs found.", "wrote alpha/alpha.md"]
+    assert hub.read_text(encoding="utf-8").endswith(
+        "- [[alpha/_companion/threads|threads]]\n\nDashboard: [[_dashboards/memory.base|memory dashboard]]\n"
+    )
+    assert git(root, "log", "-1", "--format=%s") == "avm: rebuild hubs"
+    assert git(root, "show", "--name-only", "--format=", "HEAD") == "alpha/alpha.md"
+    assert git(root, "status", "--porcelain") == ""
