@@ -13,9 +13,10 @@ from agent_mem_vault.store import Store
 
 HOOKS_ON = "features:\n  hooks: true\n"
 STOP_NUDGE_TEXT = (
-    "[agent-mem-vault] Work state changed since the last check. Before finishing, record durable decisions, "
-    "risks and next steps with the agent-mem-vault tools (save_memory with kind decision or risk, "
-    "create_handoff for a hand-over). If there is nothing durable to record, say so in one line and stop."
+    "[agent-mem-vault] Work state changed since the last check. Before finishing, update the companion cards "
+    "with update_companion: last_session (what this session did, what is unverified, the next step), and threads "
+    "when a work thread opened or closed. Record a decision or risk with save_memory only when one was made or "
+    "verified in this session. If nothing changed, say so in one line and stop."
 )
 
 
@@ -181,6 +182,7 @@ def test_stop_for_codex_prints_the_nudge_as_plain_text_and_respects_an_active_st
 
     assert reentrant == (0, "", "")
     assert plain == (0, STOP_NUDGE_TEXT + "\n", "")
+    assert "handoff" not in plain[1].lower()
 
 
 def test_stop_stays_silent_outside_a_git_work_tree(hooks_vault, tmp_path, monkeypatch, capsys):
