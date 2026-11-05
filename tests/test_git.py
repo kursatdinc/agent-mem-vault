@@ -115,3 +115,22 @@ def test_status_reports_branch_changes_and_distance_from_the_upstream_and_never_
 
 def test_status_is_none_outside_a_work_tree(tmp_path):
     assert git.status(tmp_path) is None
+
+
+def test_a_first_companion_card_is_committed_together_with_the_hub_that_links_it(repo):
+    store = Store(Vault(repo), clock=TickingClock(), git_autocommit=True, companion_max_chars=100)
+
+    store.update_companion("proj", threads="- main: wiring; next: test")
+    store.update_companion("proj", last_session="Done.")
+
+    assert run(repo, "log", "--format=%s").splitlines() == ["avm: update companion proj"] * 2
+    assert sorted(run(repo, "show", "--name-only", "--format=", "HEAD~1").splitlines()) == [
+        "_dashboards/memory.base",
+        "proj/_companion/threads.md",
+        "proj/proj.md",
+    ]
+    assert sorted(run(repo, "show", "--name-only", "--format=", "HEAD").splitlines()) == [
+        "proj/_companion/last-session.md",
+        "proj/proj.md",
+    ]
+    assert run(repo, "status", "--porcelain").splitlines() == ["?? .gitignore"]

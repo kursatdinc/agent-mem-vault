@@ -22,3 +22,10 @@ generated: true
 ## snapshot
 
 - [[project-harbor-api/snapshot/2026-03-10-harbor-api-state-after-the-postgresql-move-ae3ba645|harbor-api state after the PostgreSQL move]] (2026-03-10)
+
+## companion
+
+- [[project-harbor-api/_companion/last-session|last-session]]
+- [[project-harbor-api/_companion/threads|threads]]
+
+Dashboard: [[_dashboards/memory.base|memory dashboard]]

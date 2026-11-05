@@ -46,8 +46,9 @@ def hub_relpath(namespace: str) -> str:
     return f"{slug}/{slug}.md"
 
 
-def render_hub(namespace: str, records: list[Record]) -> str:
-    """Deterministic hub note: records grouped by kind, newest first, so an unchanged namespace renders identically."""
+def render_hub(namespace: str, records: list[Record], cards: list[str]) -> str:
+    """Deterministic hub note: records grouped by kind, newest first, then the given companion card paths and the
+    dashboard, so an unchanged namespace renders identically and no note the server writes is a graph orphan."""
     meta = {"title": f"Memory index: {namespace}", "namespace": namespace, "generated": True, "agent-written": True}
     lines = [HUB_BANNER, "", f"# {namespace}"]
     for kind in (*KINDS, RECEIPT_KIND):
@@ -55,4 +56,8 @@ def render_hub(namespace: str, records: list[Record]) -> str:
         if group:
             lines += ["", f"## {kind}", ""]
             lines += [f"- {wikilink(record.path, record.title)} ({record.created[:10]})" for record in group]
+    if cards:
+        lines += ["", "## companion", ""]
+        lines += [f"- {wikilink(card, card.rsplit('/', 1)[-1].removesuffix('.md'))}" for card in cards]
+    lines += ["", f"Dashboard: {wikilink(DASHBOARD_RELPATH, 'memory dashboard')}"]
     return render_record(meta, "\n".join(lines) + "\n")
