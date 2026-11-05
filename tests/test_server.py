@@ -1,3 +1,4 @@
+import asyncio
 import re
 
 from mcp_session import call, run_session
@@ -97,6 +98,7 @@ def test_every_tool_replies_with_the_documented_texts(tmp_path):
             relatedFiles=["src/a.py"],
             nextAction="Write docs",
         )
+        await asyncio.sleep(1.1)
         replies["snapshot"] = await call(
             session, "create_snapshot", agent="agent-a", title="Brief", content="State.", namespace="alpha"
         )
