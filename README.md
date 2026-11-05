@@ -104,8 +104,7 @@ the open risks in this project?". It uses the tools below. More snippets are in 
   the thread is done, so the list stays short instead of growing into a pile.
 
 **Memory that stays current.**
-- Decisions are `accepted` or `superseded`; risks are `open`, `mitigated` or `resolved`, with an
-  optional review date.
+- Decisions are `accepted` or `superseded`; risks are `open`, `mitigated` or `resolved`.
 - Superseding a record closes it, and the brief says `Consolidation due` when the latest snapshot
   is more than a week old.
 

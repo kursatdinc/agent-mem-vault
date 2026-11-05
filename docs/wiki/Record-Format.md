@@ -72,14 +72,14 @@ The pilot grew to three workers, which SQLite cannot serve safely. PostgreSQL gi
 | `validity` | `valid` (default) or `rejected`. |
 | `tags` | List of strings. |
 | `status` | decision: `accepted` or `superseded`; risk: `open`, `mitigated` or `resolved`; other kinds: optional free text. |
-| `review_by` | Risks only, optional: `YYYY-MM-DD`. |
 | `related_files`, `branch`, `commit`, `next_action` | Optional workflow metadata. |
 | `supersedes`, `superseded_by` | Wikilinks to the records this one replaces, and the record that replaced it. |
 | `rejected_reason` | Rejected records only. |
 | `refs`, `harness`, `session` | Receipts only. |
 | `agent-written` | `true` for records the server wrote. The dashboard filters on it. |
 
-Only keys that have a value are written. A key has one type across the whole vault.
+Only keys that have a value are written. A key has one type across the whole vault. A key the server
+does not write, such as a `review_by` left by 2.0.x or one you add by hand, stays on update.
 
 ## Links
 

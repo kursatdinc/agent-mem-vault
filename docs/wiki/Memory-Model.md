@@ -53,7 +53,6 @@ stateDiagram-v2
 - A new decision is `accepted` and a new risk `open` unless a status is given. `update_memory` can
   set any state of the kind at any time; other statuses are refused for these two kinds, and every
   other kind keeps a free-text status.
-- A risk can carry `review_by: YYYY-MM-DD`.
 - Passing `supersedes: [<id>, ...]` to `save_memory`, `update_memory` or `create_snapshot` links the
   records both ways and closes the old ones: a decision becomes `superseded`, a risk `resolved`.
 - Ids can be shortened to the eight characters every listing shows.

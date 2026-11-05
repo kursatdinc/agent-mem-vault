@@ -1,8 +1,7 @@
-import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from agent_mem_vault import git
@@ -56,7 +55,6 @@ CLOSED_BY_SUPERSEDE = {"decision": "superseded", "risk": "resolved"}
 MIN_ID_PREFIX = 8
 CONSOLIDATION_AGE = timedelta(days=7)
 CONSOLIDATION_DUE = "Consolidation due: "
-_REVIEW_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 @dataclass(frozen=True)
@@ -71,7 +69,6 @@ class _MemoryChanges:
     content: str | None
     tags: list[str] | None
     status: str | None
-    review_by: str | None
     visibility: str | None
     validity: str | None
     rejected_reason: str | None
@@ -128,7 +125,6 @@ class Store:
         next_action: str | None = None,
         tags: list[str] | None = None,
         supersedes: list[str] | None = None,
-        review_by: str | None = None,
     ) -> Record:
         safe_kind = sanitize_kind(kind)
         safe_status = _lifecycle_status(safe_kind, sanitize_optional_text(status, "status", INPUT_LIMITS["status"]))
@@ -136,7 +132,6 @@ class Store:
             safe_status = LIFECYCLES[safe_kind][0]
         fields = {
             "status": safe_status,
-            "review_by": _review_date(safe_kind, review_by),
             "related_files": sanitize_related_files(related_files),
             "branch": sanitize_optional_text(branch, "branch", INPUT_LIMITS["file"]),
             "commit": sanitize_optional_text(commit, "commit", INPUT_LIMITS["file"]),
@@ -212,7 +207,6 @@ class Store:
         visibility: str | None = None,
         validity: str | None = None,
         rejected_reason: str | None = None,
-        review_by: str | None = None,
         supersedes: list[str] | None = None,
     ) -> Record | None:
         """Change mutable fields of one record in place. Kind, namespace, id and file name never change.
@@ -221,7 +215,7 @@ class Store:
         """
         safe_id = sanitize_text(id, "id", INPUT_LIMITS["content"])
         supersede_ids = sanitize_ids(supersedes)
-        fields = (title, content, tags, status, visibility, validity, rejected_reason, review_by)
+        fields = (title, content, tags, status, visibility, validity, rejected_reason)
         if all(value is None for value in fields) and not supersede_ids:
             raise ValueError("nothing to update: pass at least one field to change")
         changes = _MemoryChanges(
@@ -231,7 +225,6 @@ class Store:
             else self._redacted(sanitize_text(content, "content", INPUT_LIMITS["content"])),
             tags=None if tags is None else self._redacted(sanitize_tags(tags)),
             status=None if status is None else self._redacted(sanitize_text(status, "status", INPUT_LIMITS["status"])),
-            review_by=review_by,
             visibility=_choice(visibility, "visibility", VISIBILITIES),
             validity=_choice(validity, "validity", VALIDITIES),
             rejected_reason=None
@@ -245,7 +238,6 @@ class Store:
             if target.kind == RECEIPT_KIND:
                 raise VaultError("receipts are immutable and cannot be updated")
             _lifecycle_status(target.kind, changes.status)
-            _review_date(target.kind, changes.review_by)
             superseded = self._supersede_targets(supersede_ids, target.namespace, replacement_id=target.id)
             updated = self.vault.update_file(
                 target.path, lambda current: self._apply_changes(current, changes, expected_revision, superseded)
@@ -439,8 +431,6 @@ class Store:
             meta.pop("tags", None)
         if changes.status is not None:
             meta["status"] = changes.status
-        if changes.review_by is not None:
-            meta["review_by"] = changes.review_by
         if changes.visibility is not None:
             meta["visibility"] = changes.visibility
         reason = changes.rejected_reason if changes.rejected_reason is not None else meta.get("rejected_reason")
@@ -654,24 +644,6 @@ def _lifecycle_status(kind: str, status: str | None) -> str | None:
     if allowed is not None and status is not None and status not in allowed:
         raise ValueError(f"status of a {kind} must be one of: {', '.join(allowed)}")
     return status
-
-
-def _review_date(kind: str, value: str | None) -> str | None:
-    if value is None:
-        return None
-    if kind != "risk":
-        raise ValueError("review_by is only allowed on risks")
-    if not isinstance(value, str) or not _is_calendar_date(value):
-        raise ValueError("review_by must be a date as YYYY-MM-DD")
-    return value
-
-
-def _is_calendar_date(value: str) -> bool:
-    try:
-        date.fromisoformat(value)
-    except ValueError:
-        return False
-    return _REVIEW_DATE.fullmatch(value) is not None
 
 
 def _choice(value: str | None, field: str, allowed: tuple[str, ...]) -> str | None:

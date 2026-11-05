@@ -96,7 +96,6 @@ visibility: internal         # public | internal | private
 validity: valid              # valid | rejected
 tags: [runtime, adk]
 status: accepted             # decision: accepted | superseded; risk: open | mitigated | resolved; else free text
-review_by: 2026-12-01        # risks only, optional, YYYY-MM-DD
 related_files: ["[[...]]"]   # optional
 supersedes: ["[[project-harbor-api/decision/2026-09-02-old-a1b2c3d4]]"]   # optional
 superseded_by: "[[...]]"     # optional
@@ -177,11 +176,11 @@ The names, parameters and reply texts below are stable: agent instructions may d
 | Tool | Notes |
 |---|---|
 | `save_context` | kind `note` |
-| `save_memory` | kind, title, content, tags, status, relatedFiles, branch, commit, nextAction, `review_by` (risks), + `supersedes` (ids) |
+| `save_memory` | kind, title, content, tags, status, relatedFiles, branch, commit, nextAction, + `supersedes` (ids) |
 | `create_snapshot` | kind `snapshot`, + `supersedes` (ids); a superseded snapshot drops out of the brief |
 | `get_project_brief` | see *Brief* below |
 | `read_latest_context`, `list_contexts`, `search_memory` | filters: agent, tags, kind, limit, include_private |
-| `update_memory` | id, expected_revision, any of title/content/tags/status/review_by/visibility/validity/rejected_reason, + `supersedes` (ids, appended to the record's list); kind, namespace and id are not parameters (extra arguments are refused); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
+| `update_memory` | id, expected_revision, any of title/content/tags/status/visibility/validity/rejected_reason, + `supersedes` (ids, appended to the record's list); kind, namespace and id are not parameters (extra arguments are refused); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
 | `get_links` | outgoing links and backlinks of a record |
 | `list_issues` | invalid record candidates with reason |
 | `write_receipt` | feature `receipts`: immutable kind `receipt` with refs (files, commits), harness, session |

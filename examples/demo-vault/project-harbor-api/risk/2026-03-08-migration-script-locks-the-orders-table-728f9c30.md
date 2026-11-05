@@ -11,7 +11,6 @@ visibility: internal
 validity: valid
 tags: [storage, migration]
 status: open
-review_by: 2026-03-20
 related_files: [migrations/0007_backfill_orders.sql]
 next_action: Split the backfill into batches of 5000 rows
 agent-written: true

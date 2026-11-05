@@ -42,7 +42,7 @@ server wrote (`agent-written` is true):
 
 | View | Shows |
 |---|---|
-| Active decisions and risks | valid decisions and risks that are not `superseded` or `resolved`, grouped by namespace, with kind, status and `review_by` |
+| Active decisions and risks | valid decisions and risks that are not `superseded` or `resolved`, grouped by namespace, with kind and status |
 | All records | every record except generated notes |
 
 The file is created only if absent; a 1.x dashboard keeps its handoffs view until you delete the file
