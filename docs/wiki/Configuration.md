@@ -72,8 +72,8 @@ both cards. See [Memory Model](https://github.com/kursatdinc/agent-mem-vault/wik
 characters, keeping a closing `Consolidation due` line) for the namespace
 `project/<git root folder name>`. `hook stop` prints a nudge to update the companion cards and to
 record a decision or risk only when one was made or verified, once per change in the working tree,
-and stays silent outside a git work tree or when the client says a stop hook is already active. With the feature off both print nothing and exit 0.
-`hook print-config` works either way. Every hook path exits 0 on error and logs the reason to stderr,
+and stays silent outside a git work tree or when the client says a stop hook is already active. With
+the feature off both print nothing and exit 0. `hook print-config` works either way. Every hook path exits 0 on error and logs the reason to stderr,
 so a hook never blocks your session.
 
 ### git_autocommit

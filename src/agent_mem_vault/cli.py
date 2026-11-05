@@ -46,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     events = hook.add_subparsers(dest="action", required=True)
     for action, text in (
         ("session-start", "print the project brief for a SessionStart hook"),
-        ("stop", "print a nudge to record decisions for a Stop hook"),
+        ("stop", "print a nudge to update the companion cards for a Stop hook"),
         ("print-config", "print the client settings snippet that installs both hooks"),
     ):
         events.add_parser(action, help=text).add_argument("--client", choices=CLIENTS, required=True)

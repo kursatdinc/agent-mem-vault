@@ -106,7 +106,7 @@ def test_doctor_reports_config_vault_counts_issues_and_leftovers_without_touchin
     assert f"vault: {configured_vault.root}" in first
     assert ".obsidian: missing" in first
     assert ".obsidian: present" in second
-    assert "default namespace: default" in first
+    assert "default namespace: project/<git root name> inside a git work tree, else default\n" in first
     assert "redact secrets: true" in first
     assert "features: receipts off, companion on, visibility on, hooks off" in first
     assert "records: 3 (decision 1, note 2)" in first
