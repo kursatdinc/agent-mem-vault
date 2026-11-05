@@ -3,7 +3,9 @@ import pytest
 from agent_mem_vault.vault import VaultError
 from mcp_session import call, run_session
 
-COMPANION_CONFIG = "features:\n  companion: true\ncompanion:\n  max_chars: 40\n"
+COMPANION_CONFIG = "companion:\n  max_chars: 40\n"
+COMPANION_OFF = "features:\n  companion: false\n"
+THREAD = "- main: wiring; next: test"
 LAST_SESSION_PATH = "project-demo/_companion/last-session.md"
 
 
@@ -12,35 +14,31 @@ def vault_files(vault):
 
 
 def test_updating_a_card_writes_a_companion_note_and_reading_returns_the_text(companion_store):
-    companion_store.update_companion("project/demo", last_session="Wired hooks.", threads="Open: import CLI.")
+    companion_store.update_companion("project/demo", last_session="Wired hooks.", threads=THREAD)
 
     vault = companion_store.vault
     assert (vault.root / LAST_SESSION_PATH).read_text(encoding="utf-8") == (
         "---\nkind: companion\nnamespace: project/demo\nupdated: 2026-10-28T09:00:01Z\nagent-written: true\n---\n"
         "Wired hooks.\n"
     )
-    assert (
-        (vault.root / "project-demo/_companion/threads.md")
-        .read_text(encoding="utf-8")
-        .endswith("---\nOpen: import CLI.\n")
-    )
+    assert (vault.root / "project-demo/_companion/threads.md").read_text(encoding="utf-8").endswith(f"---\n{THREAD}\n")
     cards = companion_store.get_companion("project/demo")
-    assert (cards.last_session, cards.threads) == ("Wired hooks.", "Open: import CLI.")
+    assert (cards.last_session, cards.threads) == ("Wired hooks.", THREAD)
 
 
 def test_a_card_is_replaced_wholesale_and_the_other_card_is_left_alone(companion_store):
-    companion_store.update_companion(last_session="First.", threads="Keep me.")
+    companion_store.update_companion(last_session="First.", threads=THREAD)
     companion_store.update_companion(last_session="Second.")
 
     cards = companion_store.get_companion()
-    assert (cards.last_session, cards.threads) == ("Second.", "Keep me.")
+    assert (cards.last_session, cards.threads) == ("Second.", THREAD)
     assert companion_store.vault.tmp_leftovers() == []
 
 
 def test_a_card_over_the_cap_is_refused_and_nothing_is_written_even_for_the_valid_card(companion_store):
-    too_long = "x" * 41
+    too_long = "- " + "x" * 30 + ": a; next: b"
 
-    with pytest.raises(ValueError, match="threads is 41 characters, over the 40 character limit: compact it"):
+    with pytest.raises(ValueError, match="threads is 44 characters, over the 40 character limit: compact it"):
         companion_store.update_companion(last_session="Fine.", threads=too_long)
 
     assert vault_files(companion_store.vault) == []
@@ -65,27 +63,33 @@ def test_a_human_note_at_a_card_path_is_never_overwritten(companion_store):
 
 
 def test_cards_are_not_records_and_do_not_show_up_as_issues(companion_store):
-    companion_store.update_companion(last_session="Note.", threads="Threads.")
+    companion_store.update_companion(last_session="Note.", threads=THREAD)
 
     scan = companion_store.vault.scan()
 
     assert (scan.records, scan.issues) == ([], [])
 
 
-def test_the_brief_appends_the_last_session_card_but_not_the_threads_card(companion_store):
-    companion_store.save_context(agent="a", title="Plan", content="Details.", namespace="alpha")
-    companion_store.update_companion("alpha", last_session="Left off at hooks.", threads="Secret thread.")
+@pytest.mark.parametrize(
+    "threads",
+    ["Open: import CLI.", "- main: wiring", "- main wiring; next: test", "main: wiring; next: test", f"{THREAD}\nfree"],
+)
+def test_every_threads_line_must_follow_the_thread_format(companion_store, threads):
+    with pytest.raises(
+        ValueError, match='threads: one line per open thread, "- <branch or topic>: <status>; next: <step>"'
+    ):
+        companion_store.update_companion("alpha", last_session="Fine.", threads=threads)
 
-    brief = companion_store.get_project_brief("alpha")
-
-    assert brief.content == "- [note] Plan (a): Details.\n\n## Last session\nLeft off at hooks."
+    assert vault_files(companion_store.vault) == []
 
 
-def test_the_card_is_appended_to_a_snapshot_brief_too(companion_store):
-    companion_store.create_snapshot(agent="a", title="State", content="Snapshot body.", namespace="alpha")
-    companion_store.update_companion("alpha", last_session="Resume here.")
+def test_blank_lines_are_allowed_and_an_empty_threads_card_means_no_open_thread(companion_store):
+    companion_store.update_companion("alpha", threads="- a: b; next: c\n\n- d: e; next: f")
+    companion_store.update_companion("alpha", last_session="Done.", threads="")
 
-    assert companion_store.get_project_brief("alpha").content == "Snapshot body.\n\n## Last session\nResume here."
+    cards = companion_store.get_companion("alpha")
+    assert (cards.last_session, cards.threads) == ("Done.", None)
+    assert "## Threads" not in companion_store.get_project_brief("alpha").content
 
 
 def test_with_the_feature_off_cards_are_unavailable_and_the_brief_ignores_them(store):
@@ -100,12 +104,12 @@ def test_with_the_feature_off_cards_are_unavailable_and_the_brief_ignores_them(s
     assert store.get_project_brief("alpha").content == "No saved memory found for namespace: alpha"
 
 
-def test_companion_tools_are_registered_only_when_the_feature_is_on(tmp_path):
+def test_companion_tools_are_registered_by_default_and_not_when_the_feature_is_off(tmp_path):
     async def tool_names(session):
         return {tool.name for tool in (await session.list_tools()).tools}
 
-    off = run_session(tmp_path / "off", tool_names)
-    on = run_session(tmp_path / "on", tool_names, COMPANION_CONFIG)
+    off = run_session(tmp_path / "off", tool_names, COMPANION_OFF)
+    on = run_session(tmp_path / "on", tool_names)
 
     assert not {"get_companion", "update_companion"} & off
     assert {"get_companion", "update_companion"} <= on
@@ -115,7 +119,7 @@ def test_companion_tools_over_stdio_reply_with_cards_and_a_compact_and_retry_err
     async def scenario(session):
         replies = {"empty": await call(session, "get_companion", namespace="alpha")}
         replies["update"] = await call(
-            session, "update_companion", namespace="alpha", last_session="Did X.", threads="Do Y."
+            session, "update_companion", namespace="alpha", last_session="Did X.", threads=THREAD
         )
         replies["get"] = await call(session, "get_companion", namespace="alpha")
         over = await session.call_tool("update_companion", {"namespace": "alpha", "last_session": "y" * 41})
@@ -128,11 +132,11 @@ def test_companion_tools_over_stdio_reply_with_cards_and_a_compact_and_retry_err
 
     assert replies["empty"] == "No companion cards yet."
     assert replies["update"] == "Companion updated."
-    assert replies["get"] == "## Last session\nDid X.\n\n## Threads\nDo Y."
+    assert replies["get"] == f"## Last session\nDid X.\n\n## Threads\n{THREAD}"
     assert replies["over"] == (
         True,
         "Error executing tool update_companion: last_session is 41 characters, over the 40 character limit: "
         "compact it and retry. Nothing was written.",
     )
-    assert replies["brief"].endswith("No saved memory found for namespace: alpha\n\n## Last session\nDid X.")
+    assert replies["brief"] == f"**Project brief for alpha**\n\n## Last session\nDid X.\n\n## Threads\n{THREAD}"
     assert replies["kept"] == replies["get"]

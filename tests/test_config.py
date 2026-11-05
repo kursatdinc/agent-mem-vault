@@ -95,11 +95,13 @@ def test_an_invalid_features_section_is_a_config_error(tmp_path, features):
         load_config({"AGENT_MEM_VAULT_CONFIG": str(config_file)})
 
 
-def test_feature_flags_default_to_off_except_visibility_and_are_read_from_the_features_section(tmp_path):
+def test_feature_flags_default_to_off_except_visibility_and_companion_and_are_read_from_the_features_section(
+    tmp_path,
+):
     plain = load_config({"AGENT_MEM_VAULT_VAULT": "/v", "AGENT_MEM_VAULT_CONFIG": _empty_file(tmp_path)})
     config_file = tmp_path / "features.yaml"
     config_file.write_text(
-        "vault: /v\nfeatures:\n  receipts: true\n  companion: true\n  visibility: false\n  hooks: true\n"
+        "vault: /v\nfeatures:\n  receipts: true\n  companion: false\n  visibility: false\n  hooks: true\n"
         "companion:\n  max_chars: 500\n",
         encoding="utf-8",
     )
@@ -107,7 +109,7 @@ def test_feature_flags_default_to_off_except_visibility_and_are_read_from_the_fe
 
     assert (plain.receipts, plain.companion, plain.visibility, plain.hooks, plain.companion_max_chars) == (
         False,
-        False,
+        True,
         True,
         False,
         3000,
@@ -118,7 +120,7 @@ def test_feature_flags_default_to_off_except_visibility_and_are_read_from_the_fe
         configured.visibility,
         configured.hooks,
         configured.companion_max_chars,
-    ) == (True, True, False, True, 500)
+    ) == (True, False, False, True, 500)
 
 
 @pytest.mark.parametrize(

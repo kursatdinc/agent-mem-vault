@@ -2,7 +2,6 @@ import re
 
 import pytest
 
-from agent_mem_vault.records import render_record
 from agent_mem_vault.store import Store
 from agent_mem_vault.vault import VaultError
 
@@ -221,83 +220,6 @@ def test_legacy_handoff_files_are_ignored_by_every_read_and_never_reported(store
     assert titles(store.list_contexts("proj")) == ["Kept pelican"]
     assert titles(store.search_memory("proj", "pelican")) == ["Kept pelican"]
     assert "Handoff" not in store.get_project_brief("proj").content
-
-
-# Snapshots and brief
-
-
-def test_the_latest_snapshot_is_the_project_brief(store):
-    store.save_memory(
-        agent="planner",
-        kind="decision",
-        title="Search API",
-        content="Add text and metadata filters.",
-        namespace="alpha",
-    )
-    store.create_snapshot(agent="planner", title="Old brief", content="Old state.", namespace="alpha")
-    snapshot = store.create_snapshot(
-        agent="planner", title="Project Alpha Brief", content="Latest state: search API is ready.", namespace="alpha"
-    )
-
-    brief = store.get_project_brief(namespace="alpha")
-
-    assert snapshot.kind == "snapshot"
-    assert snapshot.tags == ["snapshot"]
-    assert (brief.title, brief.namespace, brief.content) == (
-        "Project Alpha Brief",
-        "alpha",
-        "Latest state: search API is ready.",
-    )
-    assert brief.created == snapshot.created
-
-
-def test_the_brief_falls_back_to_recent_records_newest_first(store):
-    store.save_memory(
-        agent="planner", kind="decision", title="Use Markdown", content="Keep storage local.", namespace="alpha"
-    )
-    store.save_memory(
-        agent="reviewer",
-        kind="risk",
-        title="Retention risk",
-        content="Old notes must survive.",
-        namespace="alpha",
-    )
-
-    brief = store.get_project_brief(namespace="alpha")
-
-    assert brief.title == "Project brief for alpha"
-    assert brief.content == (
-        "- [risk] Retention risk (reviewer): Old notes must survive.\n"
-        "- [decision] Use Markdown (planner): Keep storage local."
-    )
-    assert store.get_project_brief(namespace="alpha", limit=1).content == (
-        "- [risk] Retention risk (reviewer): Old notes must survive."
-    )
-
-
-def test_the_brief_of_an_empty_namespace_says_so(store):
-    brief = store.get_project_brief(namespace="nothing-here")
-
-    assert (brief.title, brief.content) == (
-        "Project brief for nothing-here",
-        "No saved memory found for namespace: nothing-here",
-    )
-
-
-def test_the_brief_skips_private_and_rejected_records(store, vault):
-    snapshot = store.create_snapshot(agent="a", title="Private snapshot", content="Secret state.", namespace="alpha")
-    visible = store.save_memory(agent="a", kind="note", title="Visible", content="Shown.", namespace="alpha")
-    rejected = store.save_memory(agent="a", kind="note", title="Rejected", content="Wrong.", namespace="alpha")
-    (vault.root / snapshot.path).write_text(
-        render_record({**snapshot.meta, "visibility": "private"}, snapshot.body), encoding="utf-8"
-    )
-    (vault.root / rejected.path).write_text(
-        render_record({**rejected.meta, "validity": "rejected"}, rejected.body), encoding="utf-8"
-    )
-
-    brief = store.get_project_brief(namespace="alpha")
-
-    assert brief.content == f"- [note] {visible.title} ({visible.agent}): Shown."
 
 
 # Supersedes

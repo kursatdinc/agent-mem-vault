@@ -8,6 +8,7 @@ from agent_mem_vault.config import load_config
 from agent_mem_vault.format import format_brief
 from agent_mem_vault.records import namespace_slug
 from agent_mem_vault.runtime import open_store
+from agent_mem_vault.store import CONSOLIDATION_DUE
 from agent_mem_vault.vault import Vault, log
 
 CLIENTS = ("claude", "codex")
@@ -83,9 +84,12 @@ def _read_payload() -> dict:
 
 
 def _capped(text: str) -> str:
+    """Cut the brief to the hook limit, keeping a closing consolidation line: it is what triggers consolidation."""
     if len(text) <= SESSION_START_LIMIT:
         return text
-    return text[: SESSION_START_LIMIT - len(TRUNCATION_NOTE)] + TRUNCATION_NOTE
+    last_line = text.rsplit("\n", 1)[-1]
+    tail = TRUNCATION_NOTE + (f"\n{last_line}" if last_line.startswith(CONSOLIDATION_DUE) else "")
+    return text[: SESSION_START_LIMIT - len(tail)] + tail
 
 
 def _session_start(client: str, context: str) -> str:

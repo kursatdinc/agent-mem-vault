@@ -43,13 +43,16 @@ def test_private_and_rejected_records_stay_out_of_the_brief_in_both_states(vault
     for visibility_filter in (True, False):
         store = Store(vault, clock=TickingClock(), visibility_filter=visibility_filter)
         namespace = f"brief-{visibility_filter}"
-        store.save_context(agent="a", title="Visible", content="ok", namespace=namespace)
+        visible = store.save_context(agent="a", title="Visible", content="ok", namespace=namespace)
         hidden = store.save_context(agent="a", title="Hidden", content="no", namespace=namespace)
         store.update_memory(hidden.id, visibility="private")
         bad = store.save_context(agent="a", title="Wrong", content="no", namespace=namespace)
         store.update_memory(bad.id, validity="rejected", rejected_reason="superseded by facts")
 
-        assert store.get_project_brief(namespace).content == "- [note] Visible (a): ok"
+        assert store.get_project_brief(namespace).content.splitlines()[:2] == [
+            "## Active records",
+            f"- [note] Visible - id {visible.id[:8]}",
+        ]
 
 
 def test_rejected_records_are_marked_in_listings_only_when_asked_to(store):
@@ -107,7 +110,7 @@ def test_visibility_is_applied_over_stdio_with_the_optional_include_private_para
     assert "Private pelican" not in replies["search"]
     assert replies["latest"].startswith("**Wrong pelican**")
     assert replies["latest_private"].startswith("**Wrong pelican**")
-    assert replies["brief"].endswith("- [note] Public pelican (a): Shared.")
+    assert f"- [note] Public pelican - id {replies['Public pelican'][:8]}\n" in replies["brief"]
     assert "Private" not in replies["brief"] and "Wrong" not in replies["brief"]
 
 

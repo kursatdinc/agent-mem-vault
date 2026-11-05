@@ -85,6 +85,10 @@ class Record:
         return self.meta["id"]
 
     @property
+    def short_id(self) -> str:
+        return self.id[:8]
+
+    @property
     def kind(self) -> str:
         return self.meta["kind"]
 
