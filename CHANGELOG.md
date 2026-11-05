@@ -49,7 +49,8 @@ the 1.x tool surface; see *Upgrading from 1.x* below.
 - A tool call or CLI listing without a namespace uses `project/<git root name>` of the working
   directory; `default_namespace` applies only outside a git work tree. `doctor` prints that rule.
 - The stop hook asks the agent to update the companion cards, and to save a decision or risk only
-  when one was made or verified.
+  when one was made or verified. For Codex it now prints `{"decision": "block", "reason": ...}` like
+  for Claude Code: Codex rejects plain text at `Stop`.
 - The dashboard's decisions view lists only active decisions and risks and shows `review_by`.
 
 ### Upgrading from 1.x

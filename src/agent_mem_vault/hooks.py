@@ -67,7 +67,7 @@ def _run_event(action: str, client: str) -> str:
         return _session_start(client, _capped(format_brief(store.get_project_brief(namespace))))
     if payload.get("stop_hook_active") is True or not _git_state_changed(store.vault, cwd, namespace):
         return ""
-    return json.dumps({"decision": "block", "reason": STOP_NUDGE}) if client == "claude" else STOP_NUDGE
+    return json.dumps({"decision": "block", "reason": STOP_NUDGE})
 
 
 def _read_payload() -> dict:

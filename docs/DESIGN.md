@@ -247,7 +247,7 @@ marked in search output.
   `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ...}}` for Claude Code and
   plain text for Codex, capped at 9000 characters (a truncated brief ends with `[brief truncated]`,
   followed by the brief's `Consolidation due` line when it had one). The stop nudge is
-  `{"decision": "block", "reason": ...}` for Claude Code and plain text for Codex, and is skipped when
+  `{"decision": "block", "reason": ...}` for both clients (Codex rejects plain text at `Stop`), and is skipped when
   the input has `stop_hook_active: true`. The change signature (HEAD plus a hash of
   `git status --porcelain`) is stored per namespace in `<vault>/.agent-mem-vault/state/stop-<ns-slug>`;
   outside a git work tree the stop hook stays silent. Every hook path exits 0 on any error and logs the

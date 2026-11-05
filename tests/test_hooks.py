@@ -172,17 +172,17 @@ def test_stop_nudges_once_per_git_state_change(hooks_vault, repo, monkeypatch, c
     assert (hooks_vault.root / ".agent-mem-vault" / "state" / "stop-project-demo-repo").is_file()
 
 
-def test_stop_for_codex_prints_the_nudge_as_plain_text_and_respects_an_active_stop_hook(
+def test_stop_for_codex_prints_the_block_json_and_respects_an_active_stop_hook(
     hooks_vault, repo, monkeypatch, capsys
 ):
     argv = ["hook", "stop", "--client", "codex"]
 
     reentrant = run_cli(monkeypatch, capsys, argv, {"cwd": str(repo), "stop_hook_active": True})
-    plain = run_cli(monkeypatch, capsys, argv, {"cwd": str(repo)})
+    nudged = run_cli(monkeypatch, capsys, argv, {"cwd": str(repo)})
 
     assert reentrant == (0, "", "")
-    assert plain == (0, STOP_NUDGE_TEXT + "\n", "")
-    assert "handoff" not in plain[1].lower()
+    assert nudged == (0, json.dumps({"decision": "block", "reason": STOP_NUDGE_TEXT}) + "\n", "")
+    assert "handoff" not in nudged[1].lower()
 
 
 def test_stop_stays_silent_outside_a_git_work_tree(hooks_vault, tmp_path, monkeypatch, capsys):
