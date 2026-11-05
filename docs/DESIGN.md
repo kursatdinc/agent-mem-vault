@@ -140,11 +140,14 @@ agent-written: true
   message `avm: <op> <kind> <id8>` (never push). Hub, dashboard or git failures are logged to
   stderr and never fail the write. A companion card write regenerates the hub as well and commits it
   with the card (`avm: update companion <ns-slug>`).
-- The hub lists the records grouped by kind, newest first, then a `## companion` section linking each
+- The hub lists the records grouped by kind, newest first (records of the same second by path, never by
+  file time, so every synced machine renders the same hub), then a `## companion` section linking each
   card file that exists (`[[<ns-slug>/_companion/threads|threads]]`), then the line
   `Dashboard: [[_dashboards/memory.base|memory dashboard]]`, so no note the server writes is a graph
-  orphan. A namespace with no records and no cards gets no hub: an existing hub with `generated: true`
-  is removed, and its folder too once empty; any other file at the hub path is left alone.
+  orphan. A namespace with no records and no cards gets no hub: an existing hub is removed, and its
+  folder too once empty. Only a file with the whole hub frontmatter (`generated: true`,
+  `agent-written: true` and a `namespace` of that folder) counts as a hub; any other file at the hub
+  path is left alone.
 - Decision: the hub is named after its folder (`proj/proj.md`) because Obsidian's graph labels nodes by file
   name, so every project shows under its own name instead of a column of identical `_index` nodes.
 - Decision: the hub is skipped when unchanged (it holds no timestamps) and is never written over a file

@@ -518,11 +518,15 @@ class Store:
         return touched
 
     def _remove_hub(self, relpath: str) -> list[str]:
-        """Delete a hub the server generated, and its folder once empty; a note a human wrote there stays."""
+        """Delete a hub the server generated, and its folder once empty. Only a file carrying the whole hub frontmatter
+        (generated, agent-written and a namespace of this folder) is ours; any other note there stays."""
         path = self.vault.root / relpath
         if path.is_symlink() or not path.is_file():
             return []
-        if read_note(path.read_text(encoding="utf-8"))[0].get("generated") is not True:
+        meta = read_note(path.read_text(encoding="utf-8"))[0]
+        namespace = meta.get("namespace")
+        ours = meta.get("generated") is True and meta.get("agent-written") is True and isinstance(namespace, str)
+        if not ours or hub_relpath(namespace) != relpath:
             return []
         path.unlink()
         if not any(path.parent.iterdir()):
