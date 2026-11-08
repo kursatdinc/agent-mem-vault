@@ -238,6 +238,7 @@ class Store:
             else self._redacted(sanitize_text(rejected_reason, "rejected_reason", INPUT_LIMITS["title"])),
         )
         with self.vault.lock():
+            self._pull_latest()
             target = _resolve(self.vault.scan().records, safe_id)
             if target is None:
                 return None
@@ -278,6 +279,7 @@ class Store:
                 )
             texts[card] = text
         with self.vault.lock():
+            self._pull_latest()
             updated = utc_timestamp(self.clock())
             touched = []
             for card, text in texts.items():
@@ -484,6 +486,11 @@ class Store:
             body = build_body(changes.content, related)
         return self._revised(current, meta, body)
 
+    def _pull_latest(self) -> None:
+        """Start a write from the latest remote state, so the sync job has less to merge. The caller holds the lock."""
+        if self.git_autocommit:
+            git.pull_latest(self.vault.root)
+
     def _publish(self, op: str, record: Record, also_touched: list[str] | None = None) -> None:
         """Refresh the namespace hub and the dashboard, then commit; none of it may fail the write."""
         touched = [record.path, *(also_touched or []), *self.refresh_generated(record.namespace)]
@@ -569,6 +576,7 @@ class Store:
         related: list[str] | None = None,
     ) -> Record:
         with self.vault.lock():
+            self._pull_latest()
             targets = self._supersede_targets(supersedes_ids or [], namespace)
             created = utc_timestamp(self.clock())
             clean_title = self._redacted(title)

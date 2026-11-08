@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- With `features.git_autocommit`, every record and companion write first fetches the upstream and
+  fast-forwards to it, so a vault synced between machines commits on the latest remote state. It
+  never merges or pushes; offline, diverged or dirty vaults are logged and written as before.
+
 ## [2.2.0] - 2026-11-05
 
 Search finds a record by the other names the user calls its subject.

@@ -136,7 +136,10 @@ agent-written: true
   changed it in between, retry once, then return a conflict. Nothing is overwritten silently.
 - After each write: regenerate the namespace hub `<namespace-slug>/<namespace-slug>.md`; create `_dashboards/memory.base` if
   absent; if `features.git_autocommit` and the vault is a git repo, commit the touched paths with
-  message `avm: <op> <kind> <id8>` (never push). Hub, dashboard or git failures are logged to
+  message `avm: <op> <kind> <id8>` (never push). Under the same flag, a write starts (inside the lock)
+  with `git fetch` and `git merge --ff-only` of the upstream when the branch has one, so a vault
+  synced between machines commits on the latest remote state; it never merges, and a failed pull is
+  logged and skipped. Hub, dashboard or git failures are logged to
   stderr and never fail the write. A companion card write regenerates the hub as well and commits it
   with the card (`avm: update companion <ns-slug>`).
 - The hub lists the records grouped by kind, newest first (records of the same second by path, never by

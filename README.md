@@ -218,7 +218,7 @@ features:
   receipts: false                  # immutable records of finished work, with file/commit refs
   companion: true                  # per-project "last session" and "open threads" cards
   hooks: false                     # session-start brief and stop nudge for Claude Code / Codex
-  git_autocommit: false            # commit every change in the vault's git repo (never pushes)
+  git_autocommit: false            # commit every change, fast-forwarding to the upstream first (never pushes)
 companion:
   max_chars: 3000
 ```
