@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-11-08
+
+A vault synced between machines is written on top of the latest remote state.
+
+### Changed
+
+- With `features.git_autocommit`, every record and companion write first fetches the upstream and
+  fast-forwards to it, so a vault synced between machines commits on the latest remote state. It
+  never merges or pushes; offline, diverged or dirty vaults are logged and written as before.
+
 ## [2.2.0] - 2026-11-05
 
 Search finds a record by the other names the user calls its subject.
@@ -206,7 +216,8 @@ First stable release.
 - Release pipeline: pushing a `vX.Y.Z` tag builds the sdist and wheel, attaches them to a GitHub
   release, and publishes to PyPI through Trusted Publishing. See `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.0...v2.0.1

@@ -6,6 +6,7 @@ from pathlib import Path
 from agent_mem_vault.vault import log
 
 GIT_TIMEOUT_SECONDS = 30
+FETCH_TIMEOUT_SECONDS = 5
 
 
 class GitError(Exception):
@@ -21,14 +22,14 @@ class GitStatus:
     behind: int
 
 
-def run_git(cwd: Path, *args: str) -> str:
+def run_git(cwd: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> str:
     try:
         result = subprocess.run(
             ["git", *args],
             cwd=cwd,
             capture_output=True,
             text=True,
-            timeout=GIT_TIMEOUT_SECONDS,
+            timeout=timeout,
             check=False,
             env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
         )
@@ -64,6 +65,25 @@ def autocommit(root: Path, relpaths: list[str], message: str) -> None:
         run_git(root, "commit", "-m", message, "--", *relpaths)
     except GitError as error:
         log(f"git autocommit skipped: {error}")
+
+
+def pull_latest(root: Path) -> None:
+    """Fast-forward to the upstream so the next commit sits on the latest remote state. Never merges or pushes;
+    an offline, diverged or dirty vault is only logged and left to the sync job that reconciles it.
+
+    A vault outside a work tree or without an upstream is left alone without a word.
+    """
+    try:
+        if not inside_work_tree(root):
+            return
+        try:
+            run_git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+        except GitError:
+            return
+        run_git(root, "fetch", "-q", timeout=FETCH_TIMEOUT_SECONDS)
+        run_git(root, "merge", "-q", "--ff-only", "@{upstream}")
+    except GitError as error:
+        log(f"git pull skipped: {error}")
 
 
 def status(root: Path) -> GitStatus | None:

@@ -34,7 +34,7 @@ companion:
 | `features.receipts` | none | `false` | Adds the `receipt` kind and the `write_receipt` tool. |
 | `features.companion` | none | `true` | Adds the `get_companion` and `update_companion` tools and the cards at the top of the brief. |
 | `features.hooks` | none | `false` | Turns on the `hook session-start` and `hook stop` outputs. |
-| `features.git_autocommit` | none | `false` | Commit each change in the vault's git repository. Never pushes. |
+| `features.git_autocommit` | none | `false` | Commit each change in the vault's git repository, after fast-forwarding it to its upstream. Never pushes. |
 | `companion.max_chars` | none | `3000` | Size cap for each companion card. |
 
 A bad value is reported with the key that caused it, and the command exits with status 2.
@@ -81,6 +81,13 @@ so a hook never blocks your session.
 After each write, if the vault is a git repository, the touched paths are committed with a message
 like `avm: create decision 3f9a2c1e`. The server never pushes. The `.gitignore` entry for
 `.agent-mem-vault/` that it adds is left for you to commit.
+
+Before a write (`save_memory`, `update_memory`, `update_companion` and the other record tools) it
+fetches the upstream, if the branch has one, and fast-forwards to it, so the new commit sits on the
+latest state of a vault synced between machines. It never merges: with no network (the fetch gives
+up after 5 seconds), local commits not yet pushed, or uncommitted changes in the way, the pull is
+skipped with a line on stderr and the write goes ahead. Reconciling the two sides stays with the
+job that syncs the vault.
 
 ## Command line
 

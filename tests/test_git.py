@@ -134,3 +134,79 @@ def test_a_first_companion_card_is_committed_together_with_the_hub_that_links_it
         "proj/proj.md",
     ]
     assert run(repo, "status", "--porcelain").splitlines() == ["?? .gitignore"]
+
+
+@pytest.fixture
+def other_mac(repo, tmp_path):
+    """The vault pushed to a bare remote, and a second clone of that remote standing for the other Mac."""
+    remote = tmp_path / "remote.git"
+    run(tmp_path, "init", "-q", "--bare", "-b", "main", str(remote))
+    run(repo, "remote", "add", "origin", str(remote))
+    committing_store(repo).save_context(agent="a", title="Base", content="c", namespace="proj")
+    run(repo, "push", "-q", "-u", "origin", "main")
+    clone = tmp_path / "other"
+    run(tmp_path, "clone", "-q", str(remote), str(clone))
+    run(clone, "config", "user.name", "Dana Tester")
+    run(clone, "config", "user.email", "dana@example.invalid")
+    run(clone, "config", "commit.gpgsign", "false")
+    return clone
+
+
+def push_from(clone, name):
+    (clone / name).write_text("x", encoding="utf-8")
+    run(clone, "add", name)
+    run(clone, "commit", "-q", "-m", f"other {name}")
+    run(clone, "push", "-q")
+
+
+WRITES = {
+    "save_memory": lambda store: store.save_context(agent="a", title="New", content="c", namespace="proj"),
+    "update_companion": lambda store: store.update_companion("proj", last_session="Done."),
+    "update_memory": lambda store: store.update_memory(store.get_last_context("proj").id, content="changed"),
+}
+
+
+@pytest.mark.parametrize("write", WRITES.values(), ids=WRITES.keys())
+def test_a_write_fast_forwards_to_the_remote_so_its_commit_sits_on_the_latest_state(repo, other_mac, write):
+    push_from(other_mac, "from-other.md")
+
+    write(Store(Vault(repo), clock=TickingClock(), git_autocommit=True, companion_max_chars=100))
+
+    assert (repo / "from-other.md").exists()
+    assert run(repo, "rev-list", "--left-right", "--count", "HEAD...@{upstream}") == "1\t0"
+
+
+def test_an_unreachable_remote_is_logged_and_never_fails_the_write(repo, other_mac, tmp_path, capsys):
+    run(repo, "remote", "set-url", "origin", str(tmp_path / "gone.git"))
+
+    record = committing_store(repo).save_context(agent="a", title="Offline", content="c", namespace="proj")
+
+    assert run(repo, "log", "--format=%s", "-1") == f"avm: create note {record.id[:8]}"
+    assert "git pull skipped" in capsys.readouterr().err
+
+
+def test_a_diverged_vault_is_written_without_a_merge_and_left_to_the_sync_job(repo, other_mac, capsys):
+    store = committing_store(repo)
+    store.save_context(agent="a", title="Local", content="c", namespace="proj")
+    push_from(other_mac, "from-other.md")
+
+    store.save_context(agent="a", title="Still local", content="c", namespace="proj")
+
+    assert run(repo, "rev-list", "--left-right", "--count", "HEAD...@{upstream}") == "2\t1"
+    assert not (repo / "from-other.md").exists()
+    assert not (repo / ".git" / "MERGE_HEAD").exists()
+    assert "git pull skipped" in capsys.readouterr().err
+
+
+def test_nothing_is_pulled_unless_the_feature_is_on(repo, other_mac):
+    push_from(other_mac, "from-other.md")
+
+    Store(Vault(repo), clock=TickingClock()).save_context(agent="a", title="Quiet", content="c", namespace="proj")
+
+    assert not (repo / "from-other.md").exists()
+
+
+def test_a_vault_without_a_remote_is_written_without_a_word_about_pulling(repo, capsys):
+    committing_store(repo).save_context(agent="a", title="Local only", content="c", namespace="proj")
+
+    assert capsys.readouterr().err == ""
