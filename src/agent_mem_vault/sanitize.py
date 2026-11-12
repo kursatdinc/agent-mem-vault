@@ -26,7 +26,20 @@ _SECRET_PATTERNS = (
     (re.compile(r"\b(?:gho|ghp|github_pat)_[A-Za-z0-9_]{20,}\b"), "[REDACTED_TOKEN]"),
     (re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"), "[REDACTED_TOKEN]"),
     (re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"), "[REDACTED_TOKEN]"),
-    (re.compile(r"\b(api[_-]?key|token|secret|password)=(\S+)", re.IGNORECASE), r"\1=[REDACTED_SECRET]"),
+    (re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"), "[REDACTED_TOKEN]"),
+    (re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"), "[REDACTED_TOKEN]"),
+    (re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b"), "[REDACTED_TOKEN]"),
+    (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"), "[REDACTED_TOKEN]"),
+    (
+        re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)", re.DOTALL),
+        "[REDACTED_PRIVATE_KEY]",
+    ),
+    (re.compile(r"\b(Bearer\s+)[A-Za-z0-9._~+/=-]{16,}", re.IGNORECASE), r"\1[REDACTED_TOKEN]"),
+    (re.compile(r"(\b[a-z][a-z0-9+.-]*://[^\s/:@]+):[^\s/@]+@", re.IGNORECASE), r"\1:[REDACTED_SECRET]@"),
+    (
+        re.compile(r"\b([\w-]*?(?:api[_-]?key|token|secret|passwd|password))=(\S+)", re.IGNORECASE),
+        r"\1=[REDACTED_SECRET]",
+    ),
 )
 
 

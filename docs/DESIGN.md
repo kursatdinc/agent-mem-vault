@@ -171,6 +171,12 @@ agent-written: true
 - Decision: the age weight multiplies the text score and stops at 0.5, so recency reorders matches of
   similar strength but a record with more than twice another's text score ranks above it however old
   it is: a year-old title hit (3 x 0.5) still beats a new single content hit (1).
+- Decision: a search that finds nothing is retried in the tool, not in the store's exact search, so the
+  reply says which it is. The retry drops filler words, keeps records holding at least half of the
+  remaining stems and multiplies the text score by the square of the share held. On 54 real model queries
+  the exact rule answered 72% and the retry raised that to 89%; filler removal alone answered no more. A
+  query that is an id prefix (8+ hex digits and dashes) is looked up as an id first, because search lines
+  show ids and models paste them back.
 - Decision: `aliases` (Obsidian's own property, so `[[alias]]` links resolve in Obsidian too) carry the
   other names the user uses for a subject, an acronym or an old product name. A lexical search misses
   those without embeddings; an alias hit ranks between a title hit and a content hit.
@@ -197,6 +203,7 @@ The names, parameters and reply texts below are stable: agent instructions may d
 | `get_project_brief` | see *Brief* below |
 | `read_latest_context`, `list_contexts`, `search_memory` | filters: agent, tags, kind, limit, include_private; `list_contexts` and `search_memory` also include_closed |
 | `update_memory` | id, expected_revision, any of title/content/tags/aliases/status/visibility/validity/rejected_reason, + `supersedes` (ids, appended to the record's list); kind, namespace and id are not parameters (extra arguments are ignored, so an update that passes only them fails with `nothing to update`); a stale `expected_revision` is a normal reply naming the current revision, a file changed twice during the write is a tool error |
+| `get_memory` | ids (1 to 20, each an id or a unique prefix of 8+ characters), include_private: the full content of each record, `Memory not found: <id>` for one that is unknown or private; reads closed records too |
 | `get_links` | outgoing links and backlinks of a record |
 | `list_issues` | invalid record candidates with reason |
 | `write_receipt` | feature `receipts`: immutable kind `receipt` with refs (files, commits), harness, session |

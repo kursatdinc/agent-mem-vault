@@ -1,3 +1,4 @@
+import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -46,7 +47,7 @@ from agent_mem_vault.sanitize import (
     sanitize_tags,
     sanitize_text,
 )
-from agent_mem_vault.search import query_stems, score
+from agent_mem_vault.search import partial_score, partial_stems, query_stems, score
 from agent_mem_vault.vault import Issue, RevisionConflict, Vault, VaultError, log
 
 VISIBILITIES = ("public", "internal", "private")
@@ -54,6 +55,7 @@ VALIDITIES = ("valid", "rejected")
 LIFECYCLES = {"decision": ("accepted", "superseded"), "risk": ("open", "mitigated", "resolved")}
 CLOSED_BY_SUPERSEDE = {"decision": "superseded", "risk": "resolved"}
 MIN_ID_PREFIX = 8
+_ID_PREFIX = re.compile(r"[0-9a-f-]+")
 CONSOLIDATION_AGE = timedelta(days=7)
 CONSOLIDATION_DUE = "Consolidation due: "
 
@@ -301,6 +303,16 @@ class Store:
         record = _resolve(self.vault.scan().records, sanitize_text(id, "id", INPUT_LIMITS["content"]))
         return None if record is None else (record, link_report(self.vault, record))
 
+    def get_memories(self, ids: list[str], include_private: bool = False) -> list[Record | None]:
+        """One entry per requested id or id prefix, in request order: the record, or None when none is readable."""
+        records = self.vault.scan().records
+        hide_private = self.visibility_filter and not include_private
+        found = [_resolve(records, sanitize_text(id, "id", INPUT_LIMITS["content"])) for id in ids]
+        return [
+            None if record is None or (hide_private and record.meta.get("visibility") == "private") else record
+            for record in found
+        ]
+
     def list_issues(self) -> list[Issue]:
         return self.vault.scan().issues
 
@@ -340,12 +352,36 @@ class Store:
             namespace, agent=agent, tags=tags, kind=kind, include_private=include_private, include_closed=include_closed
         )
         if query:
-            wanted = query_stems(sanitize_text(query, "query", INPUT_LIMITS["content"]))
+            safe_query = sanitize_text(query, "query", INPUT_LIMITS["content"])
+            if id_matches := _id_matches(records, safe_query):
+                return id_matches[: normalize_limit(limit)]
+            wanted = query_stems(safe_query)
             now = self.clock()
             scored = [(score(record, wanted, now), record) for record in records]
             ranked = sorted((pair for pair in scored if pair[0] is not None), key=lambda pair: -pair[0])
             records = [record for _, record in ranked]
         return records[: normalize_limit(limit)]
+
+    def search_partial(
+        self,
+        query: str,
+        namespace: str | None = None,
+        agent: str | None = None,
+        tags: list[str] | None = None,
+        kind: str | None = None,
+        limit: float | None = None,
+        include_private: bool = False,
+        include_closed: bool = False,
+    ) -> list[Record]:
+        """Records holding at least half of the query's words, best first: what to offer when none holds them all."""
+        records = self._select(
+            namespace, agent=agent, tags=tags, kind=kind, include_private=include_private, include_closed=include_closed
+        )
+        wanted = partial_stems(sanitize_text(query, "query", INPUT_LIMITS["content"]))
+        now = self.clock()
+        scored = [(partial_score(record, wanted, now), record) for record in records]
+        ranked = sorted((pair for pair in scored if pair[0] is not None), key=lambda pair: -pair[0])
+        return [record for _, record in ranked][: normalize_limit(limit)]
 
     def get_project_brief(self, namespace: str | None = None, limit: float | None = None) -> Brief:
         """Companion cards, the latest snapshot, the active records created after it, and whether to consolidate.
@@ -667,6 +703,14 @@ def _resolve(records: list[Record], wanted: str) -> Record | None:
     if len(matches) > 1:
         raise VaultError(f"id prefix {wanted} matches {len(matches)} records: pass more characters")
     return matches[0] if matches else None
+
+
+def _id_matches(records: list[Record], query: str) -> list[Record]:
+    """The records whose id starts with the query, when it is an id prefix of at least MIN_ID_PREFIX characters."""
+    prefix = query.strip().lower()
+    if len(prefix) < MIN_ID_PREFIX or not _ID_PREFIX.fullmatch(prefix):
+        return []
+    return [record for record in records if record.id.startswith(prefix)]
 
 
 def _supersedes_lines(targets: list[Record]) -> list[str]:

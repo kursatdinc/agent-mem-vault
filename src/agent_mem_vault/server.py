@@ -7,13 +7,21 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from agent_mem_vault.companion import THREAD_FORMAT, format_companion
-from agent_mem_vault.format import format_brief, format_issues, format_links, format_records, format_timestamp
+from agent_mem_vault.format import (
+    format_brief,
+    format_issues,
+    format_links,
+    format_memories,
+    format_records,
+    format_timestamp,
+)
 from agent_mem_vault.records import KINDS, RECEIPT_KIND
 from agent_mem_vault.sanitize import INPUT_LIMITS
 from agent_mem_vault.store import Store
 from agent_mem_vault.vault import RevisionConflict, VaultError
 
 ENGLISH = " Memory content is written in English."
+PARTIAL_MATCHES = "No record holds every word; closest partial matches:"
 
 Kind = Literal[*KINDS]
 Namespace = Annotated[
@@ -186,7 +194,13 @@ def create_server(store: Store) -> MCPServer:
         include_closed: IncludeClosed = False,
     ) -> str:
         records = store.search_memory(namespace, query, agent, tags, kind, limit, include_private, include_closed)
-        return format_records(records, store.visibility_filter) if records else "No matching memory found."
+        if records:
+            return format_records(records, store.visibility_filter)
+        if query:
+            partial = store.search_partial(query, namespace, agent, tags, kind, limit, include_private, include_closed)
+            if partial:
+                return f"{PARTIAL_MATCHES}\n{format_records(partial, store.visibility_filter)}"
+        return "No matching memory found."
 
     @tool("create_snapshot", "Save a durable snapshot summary for a namespace.")
     def create_snapshot(
@@ -258,6 +272,17 @@ def create_server(store: Store) -> MCPServer:
                 f"{conflict.current}. Read the record again before updating."
             )
         return f"Memory updated. ID: {record.id}. Revision: {record.revision}" if record else "Memory not found."
+
+    @tool(
+        "get_memory",
+        "Read the full content of records by ID, or by a unique prefix of 8+ characters: the id shown in every list, "
+        "search and brief line. Search returns titles only; use this to read the body.",
+    )
+    def get_memory(
+        ids: Annotated[list[RecordId], Field(min_length=1, max_length=INPUT_LIMITS["tags"])],
+        include_private: IncludePrivate = False,
+    ) -> str:
+        return format_memories(ids, store.get_memories(ids, include_private))
 
     @tool("get_links", "List the outgoing links and the backlinks of a record by ID.")
     def get_links(id: RecordId) -> str:

@@ -12,6 +12,7 @@ TOOLS = {
     "read_latest_context",
     "list_contexts",
     "search_memory",
+    "get_memory",
     "get_links",
     "list_issues",
     "get_companion",

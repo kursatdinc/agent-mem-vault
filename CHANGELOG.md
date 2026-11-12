@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-11-12
+
+A record's body can be read by id, and a search that finds nothing offers its closest matches.
+
+### Added
+
+- `get_memory` MCP tool and `Store.get_memories`: read the full content of up to 20 records by id or
+  unique id prefix of 8+ characters. Search and list lines show titles only, so a record's body had no
+  tool of its own. A request names the ids it could not read (`Memory not found: <id>`).
+- `search_memory` resolves a query that is an id prefix (8+ hex digits and dashes) to the records with
+  that id, and, when no record holds every query word, offers the records holding at least half of the
+  words, filler words ignored, best first, under `No record holds every word; closest partial matches:`
+  (`Store.search_partial`).
+
+### Changed
+
+- Secret redaction also masks AWS and Google API keys, Stripe keys, JWTs, private key blocks, `Bearer`
+  tokens, the password in a URL, and `passwd=` or prefixed assignments such as `access_token=`.
+
 ## [2.3.0] - 2026-11-08
 
 A vault synced between machines is written on top of the latest remote state.
@@ -216,7 +235,8 @@ First stable release.
 - Release pipeline: pushing a `vX.Y.Z` tag builds the sdist and wheel, attaches them to a GitHub
   release, and publishes to PyPI through Trusted Publishing. See `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.0.1...v2.1.0
