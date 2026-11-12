@@ -147,7 +147,7 @@ related memories by meaning, while this project matches stemmed keywords in titl
 | Group | Tools |
 |---|---|
 | Write | `save_memory`, `save_context`, `create_snapshot`, `update_memory` |
-| Read | `get_project_brief`, `search_memory`, `list_contexts`, `read_latest_context`, `get_links` |
+| Read | `get_project_brief`, `search_memory`, `get_memory`, `list_contexts`, `read_latest_context`, `get_links` |
 | Companion (on by default) | `get_companion`, `update_companion` |
 | Health | `list_issues` |
 | Optional | `write_receipt` (receipts) |

@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from agent_mem_vault.search import query_stems, stems
+from mcp_session import call, run_session
 
 
 def titles(records):
@@ -127,3 +128,52 @@ def test_a_hand_written_alias_string_is_searched_like_a_one_item_list(store, vau
     path.write_text(path.read_text(encoding="utf-8").replace("title:", "aliases: google adk\ntitle:", 1), "utf-8")
 
     assert titles(store.search_memory(namespace="p", query="google adk")) == ["Runtime upgrade"]
+
+
+def test_a_partial_search_ranks_records_by_how_many_query_words_they_hold_and_drops_less_than_half(store):
+    store.save_context(agent="a", title="Alpha beta gamma", content="x", namespace="p")
+    store.save_context(agent="a", title="Alpha beta", content="x", namespace="p")
+    store.save_context(agent="a", title="Alpha", content="x", namespace="p")
+    store.save_context(agent="a", title="Unrelated", content="x", namespace="p")
+
+    found = store.search_partial(namespace="p", query="alpha beta gamma delta")
+
+    assert titles(found) == ["Alpha beta gamma", "Alpha beta"]
+
+
+def test_a_partial_search_ignores_filler_words_and_finds_nothing_in_a_query_made_of_them(store):
+    store.save_context(agent="a", title="Cache layout", content="x", namespace="p")
+
+    assert titles(store.search_partial(namespace="p", query="why did we drop the cache")) == ["Cache layout"]
+    assert store.search_partial(namespace="p", query="why did we") == []
+    assert store.search_partial(namespace="p", query="?!") == []
+
+
+def test_a_partial_search_keeps_the_filters_of_the_exact_one(store):
+    store.save_memory(agent="a", kind="decision", title="Alpha beta", content="x", namespace="p")
+    store.save_memory(agent="a", kind="risk", title="Alpha beta", content="x", namespace="p")
+    store.save_memory(agent="a", kind="decision", title="Alpha beta", content="x", namespace="other")
+
+    found = store.search_partial(namespace="p", query="alpha gamma", kind="risk")
+
+    assert [(record.kind, record.namespace) for record in found] == [("risk", "p")]
+    assert len(store.search_partial(namespace="p", query="alpha beta gamma delta", limit=1)) == 1
+
+
+def test_the_search_tool_offers_labelled_partial_matches_only_when_no_record_holds_every_word(tmp_path):
+    async def scenario(session):
+        for title in ("Alpha beta", "Gamma"):
+            await call(session, "save_context", agent="a", title=title, content="x", namespace="p")
+        return {
+            "exact": await call(session, "search_memory", namespace="p", query="alpha beta"),
+            "partial": await call(session, "search_memory", namespace="p", query="alpha beta delta"),
+            "none": await call(session, "search_memory", namespace="p", query="zebra"),
+        }
+
+    replies = run_session(tmp_path, scenario)
+
+    assert replies["exact"].startswith("1. [note] (p) Alpha beta - a - ")
+    assert replies["partial"].startswith(
+        "No record holds every word; closest partial matches:\n1. [note] (p) Alpha beta - a - "
+    )
+    assert replies["none"] == "No matching memory found."

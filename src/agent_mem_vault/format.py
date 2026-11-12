@@ -26,6 +26,21 @@ def format_record(record: Record, index: int, mark_rejected: bool = False) -> st
     )
 
 
+def format_memories(requested: list[str], records: list[Record | None]) -> str:
+    return "\n\n---\n\n".join(
+        f"Memory not found: {wanted}" if record is None else _format_full_record(record)
+        for wanted, record in zip(requested, records, strict=True)
+    )
+
+
+def _format_full_record(record: Record) -> str:
+    status = f": {record.meta['status']}" if record.meta.get("status") else ""
+    return (
+        f"**{record.title}** - [{record.kind}{status}] ({record.namespace}) - {record.agent} - "
+        f"{format_timestamp(record.created)} - id {record.short_id} - revision {record.revision}\n\n{record.content}"
+    )
+
+
 def format_records(records: list[Record], mark_rejected: bool = False) -> str:
     return "\n".join(format_record(record, index, mark_rejected) for index, record in enumerate(records))
 

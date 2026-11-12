@@ -147,6 +147,30 @@ newest record.
 
 Returns numbered lines or `No matching memory found.`
 
+Two cases change the rule above:
+
+- A query that is an id prefix (8 or more hex digits and dashes) returns the records whose id starts
+  with it, so an id pasted into the search box finds its record. A hex-looking query that matches no
+  id is searched as text.
+- When no record holds every query word, the search retries without filler words (`why`, `did`,
+  `the`, ...) and offers the records holding at least half of the remaining words, best first, under
+  `No record holds every word; closest partial matches:`. A record holding more of the words ranks
+  above one that only repeats a word. With no such record the reply is `No matching memory found.`
+
+### get_memory
+
+The full content of records by id; search and list lines show titles only.
+
+| Parameter | Type | Required | Notes |
+|---|---|---|---|
+| `ids` | list of strings | yes | 1 to 20 ids, each a full id or a unique prefix of at least 8 characters. |
+| `include_private` | boolean | no | Default false. |
+
+Returns one block per id in request order, separated by `---`: `**<title>** - [<kind>: <status>]
+(<namespace>) - <agent> - <timestamp> - id <id8> - revision <n>` followed by the content, or
+`Memory not found: <id>` when no readable record has that id. Closed records are returned. The
+revision is the one `update_memory` takes as `expected_revision`.
+
 ### list_contexts
 
 Recent records, newest first. Parameters: `namespace`, `agent`, `tags`, `kind`, `limit`,

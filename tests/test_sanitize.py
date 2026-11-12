@@ -83,3 +83,34 @@ def test_redact_secrets_masks_known_token_shapes_and_key_value_pairs():
         redact_secrets("API_KEY=hunter2 and password=pw") == "API_KEY=[REDACTED_SECRET] and password=[REDACTED_SECRET]"
     )
     assert redact_secrets("nothing to hide") == "nothing to hide"
+
+
+def test_redact_secrets_masks_cloud_keys_jwts_private_keys_bearer_tokens_and_url_credentials():
+    jwt = "eyJ" + "a" * 10 + ".eyJ" + "b" * 10 + "." + "c" * 10
+    private_key = "-----BEGIN " + "RSA PRIVATE KEY-----\nMIIE\nabc\n-----END RSA PRIVATE KEY-----"
+
+    assert redact_secrets("key AKIA" + "A" * 16 + " end") == "key [REDACTED_TOKEN] end"
+    assert redact_secrets("AIza" + "b" * 35) == "[REDACTED_TOKEN]"
+    assert redact_secrets("sk_" + "live_" + "c" * 24) == "[REDACTED_TOKEN]"
+    assert redact_secrets(f"jwt {jwt}.") == "jwt [REDACTED_TOKEN]."
+    assert redact_secrets(f"before\n{private_key}\nafter") == "before\n[REDACTED_PRIVATE_KEY]\nafter"
+    assert redact_secrets("Authorization: Bearer " + "d" * 20) == "Authorization: Bearer [REDACTED_TOKEN]"
+    assert (
+        redact_secrets("postgres://admin:hunter2@db.local:5432/app")
+        == "postgres://admin:[REDACTED_SECRET]@db.local:5432/app"
+    )
+    assert (
+        redact_secrets("access_token=abc client_secret=xyz")
+        == "access_token=[REDACTED_SECRET] client_secret=[REDACTED_SECRET]"
+    )
+
+
+def test_redact_secrets_leaves_ordinary_text_that_only_looks_similar_alone():
+    for text in (
+        "max_tokens=100",
+        "Bearer authentication is used",
+        "see https://example.com/a:b and ssh://git@github.com:org/repo.git",
+        "the AKIA prefix is short",
+        "http://localhost:8080/path@x",
+    ):
+        assert redact_secrets(text) == text

@@ -104,5 +104,7 @@ job that syncs the vault.
 ## Security defaults
 
 Inputs are length limited and control characters are stripped. Paths that resolve outside the vault
-are refused. Redaction covers GitHub and Slack tokens, `sk-` style keys, and `api_key=`, `token=`,
-`secret=` and `password=` assignments.
+are refused. Redaction covers GitHub and Slack tokens, `sk-` and Stripe style keys, AWS and Google API keys, JWTs,
+private key blocks, `Bearer` tokens, the password in a URL (`scheme://user:password@host`), and
+`api_key=`, `token=`, `secret=`, `passwd=` and `password=` assignments, including prefixed names such as
+`access_token=`.
