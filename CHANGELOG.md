@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-15
+
+Closed records can leave the vault's working set without being deleted.
+
+### Added
+
+- `agent-mem-vault archive --dry-run | --apply`: moves every closed record (superseded, resolved, or
+  replaced by another one) to `<namespace>/_archive/<kind>/`, rewrites every wikilink in the vault that
+  points at it, rebuilds every hub and commits as `avm: archive <n> closed records`. Archived records
+  leave the brief, search, `list` and `get_memory`; git history and the archive folder keep them, and
+  Obsidian's Excluded files setting can hide every `_archive/` folder from the graph.
+
 ## [2.4.0] - 2026-11-12
 
 A record's body can be read by id, and a search that finds nothing offers its closest matches.
@@ -235,7 +247,8 @@ First stable release.
 - Release pipeline: pushing a `vX.Y.Z` tag builds the sdist and wheel, attaches them to a GitHub
   release, and publishes to PyPI through Trusted Publishing. See `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.1.0...v2.2.0

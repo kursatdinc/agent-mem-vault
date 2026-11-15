@@ -6,7 +6,13 @@ from agent_mem_vault.config import Config, ConfigError, load_config
 from agent_mem_vault.doctor import run_doctor
 from agent_mem_vault.format import format_records
 from agent_mem_vault.hooks import CLIENTS, run_hook
-from agent_mem_vault.migrate import Move, archive_legacy_handoffs, legacy_handoffs
+from agent_mem_vault.migrate import (
+    Move,
+    archive_closed_records,
+    archive_legacy_handoffs,
+    closed_records,
+    legacy_handoffs,
+)
 from agent_mem_vault.runtime import open_store
 from agent_mem_vault.vault import VaultError
 
@@ -44,6 +50,17 @@ def build_parser() -> argparse.ArgumentParser:
     mode.add_argument("--dry-run", action="store_true", help="print what would move and change nothing")
     mode.add_argument(
         "--apply", action="store_true", help="move them, rebuild every hub and commit when the vault is a git work tree"
+    )
+
+    archive = commands.add_parser(
+        "archive", help="move closed records (superseded or resolved) into their namespace's _archive folder"
+    )
+    mode = archive.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--dry-run", action="store_true", help="print what would move and change nothing")
+    mode.add_argument(
+        "--apply",
+        action="store_true",
+        help="move them, rewrite the links to them, rebuild every hub and commit when the vault is a git work tree",
     )
 
     rebuild = commands.add_parser(
@@ -99,6 +116,25 @@ def _migrate(store, apply: bool) -> int:
     return 0
 
 
+def _archive_closed(store, apply: bool) -> int:
+    moves, relinked, hubs = archive_closed_records(store) if apply else (closed_records(store), [], [])
+    for move in moves:
+        print(_move_line(move, apply))
+    count = sum(not move.blocked for move in moves)
+    noun = "record" if count == 1 else "records"
+    if not moves:
+        print("No closed records found.")
+    elif apply:
+        print(f"Archived {count} closed {noun}.")
+    else:
+        print(f"Dry run: {count} closed {noun} to archive. Run `agent-mem-vault archive --apply` to archive them.")
+    if apply:
+        for path in relinked:
+            print(f"relinked {path}")
+        _print_hub_changes(store.vault.root, hubs)
+    return 0
+
+
 def _rebuild_hubs(store, slugs: list[str]) -> int:
     touched, unknown = store.rebuild_hubs(slugs or None)
     for slug in unknown:
@@ -128,6 +164,8 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     store = open_store(config)
     if args.command == "migrate":
         return _migrate(store, args.apply)
+    if args.command == "archive":
+        return _archive_closed(store, args.apply)
     if args.command == "rebuild-hubs":
         return _rebuild_hubs(store, args.slugs)
     if args.command == "list":
