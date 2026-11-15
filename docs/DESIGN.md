@@ -32,7 +32,7 @@ writes `.obsidian/`, never launches Obsidian, never pushes git.
 - Runtime dependencies: `mcp>=2.3,<3` (official SDK, `MCPServer`; expected failures are raised as `ToolError` so callers read the text), `PyYAML`, `PyStemmer`. Nothing else.
 - Dev: `uv`, `pytest`, `ruff`. Tests use temporary vaults with synthetic data only.
 - `agent-mem-vault` with no arguments runs the MCP server over stdio. Subcommands:
-  `doctor`, `list`, `search`, `migrate`, `hook`.
+  `doctor`, `list`, `search`, `migrate`, `archive`, `rebuild-hubs`, `hook`.
 
 ## Configuration
 Precedence: built-in defaults < config file < environment variables.
@@ -66,6 +66,7 @@ companion:
     _companion/last-session.md      # companion feature
     _companion/threads.md           # companion feature
     _archive/handoffs/*.md          # 1.x handoffs moved by `migrate`; never read
+    _archive/<kind>/*.md            # closed records moved by `archive`; never read
     <kind>/<YYYY-MM-DD>-<title-slug>-<id8>.md
   _dashboards/memory.base           # generated only if absent
   .agent-mem-vault/              # server-private: lock file, tmp/ for atomic writes
@@ -275,6 +276,13 @@ marked in search output.
   hubs), prints each touched hub file, and commits all of it as `avm: migrate <n> legacy handoffs`
   (`avm: rebuild hubs` when nothing moved) when the vault is a git work tree. `--dry-run` writes
   nothing. `doctor` prints the number of legacy handoffs while any remain.
+- `archive --dry-run | --apply`: moves every closed record (`superseded_by` set, or status `superseded` or
+  `resolved`) from `<ns-dir>/<kind>/` to `<ns-dir>/_archive/<kind>/` and prints each move. `--apply` takes
+  the lock, rewrites every wikilink in the vault that points at a moved record (frontmatter and body,
+  so a successor's `supersedes` link and its related block follow the move), skips (and reports) a taken
+  archive path, rebuilds every hub, prints each relinked note and touched hub file, and commits all of
+  it as `avm: archive <n> closed records` when the vault is a git work tree. Archived records leave the
+  server's view: brief, search, `list`, `get_memory` and `get_links` read kind folders only.
 - `rebuild-hubs [SLUG ...]`: regenerates the hub of each given namespace folder slug, or of every
   namespace folder (a top-level folder whose name is its own slug, plus the slug of every record's
   namespace) when none is given, under the lock, and removes the hub of a namespace that has no records

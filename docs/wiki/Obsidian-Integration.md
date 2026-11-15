@@ -18,6 +18,11 @@ Records link to each other through wikilinks in their frontmatter and in a gener
   the project, its companion cards and the dashboard. It is named after its folder, so the graph labels
   it with the project name, and a project shows up as a cluster around its hub with no orphan notes.
   After deleting or moving notes by hand, `agent-mem-vault rebuild-hubs` brings the hubs up to date.
+- `agent-mem-vault archive --apply` moves closed records to `<namespace>/_archive/<kind>/` and points the
+  links at them there. To keep them out of the graph, search and link suggestions, add the regex
+  `/(^|\/)_archive\//` under **Settings, Files and links, Excluded files** (`userIgnoreFilters` in
+  `.obsidian/app.json`, which is per device). A plain `_archive/` entry matches only a top-level folder,
+  and every namespace has its own `_archive/`.
 - The backlinks pane of a record shows what replaced it and what refers to it. The `get_links` tool
   returns the same information to an agent.
 

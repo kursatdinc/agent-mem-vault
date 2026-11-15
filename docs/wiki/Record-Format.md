@@ -11,6 +11,7 @@ and what Obsidian shows as properties.
     <namespace-slug>.md             generated hub note
     _companion/                     companion cards (feature companion)
     _archive/handoffs/              1.x handoffs moved by `migrate`; never read
+    _archive/<kind>/                closed records moved by `archive`; never read
     <kind>/<YYYY-MM-DD>-<title-slug>-<id8>.md
   _dashboards/memory.base           generated dashboard
   .agent-mem-vault/              server-private: lock file and tmp/ for atomic writes

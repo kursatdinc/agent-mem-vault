@@ -116,6 +116,12 @@ class Vault:
         target.parent.mkdir(parents=True, exist_ok=True)
         os.replace(self._write_tmp(text), target)
 
+    def rewrite(self, relpath: str, text: str) -> None:
+        """Atomically replace the text of an existing file. The caller holds the lock."""
+        target = self.root / relpath
+        self._check_inside_vault(target)
+        os.replace(self._write_tmp(text), target)
+
     def write_generated(self, relpath: str, text: str, owner: tuple[str, object] = ("generated", True)) -> bool:
         """Atomically (re)write a generated file; unchanged text is skipped and a note a human wrote is never replaced.
 

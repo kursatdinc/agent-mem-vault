@@ -404,7 +404,7 @@ class Store:
             record
             for record in records
             if record.kind != "snapshot"
-            and _is_active(record)
+            and is_active(record)
             and (snapshot is None or record.created >= snapshot.created)
         ]
         sections = card_sections(self.get_companion(safe_namespace)) if self.companion_max_chars is not None else []
@@ -474,7 +474,7 @@ class Store:
             and (safe_agent is None or record.agent == safe_agent)
             and (kind is None or record.kind == kind)
             and not (hide_private and record.meta.get("visibility") == "private")
-            and (include_closed or _is_active(record))
+            and (include_closed or is_active(record))
             and set(safe_tags) <= set(record.tags)
         ]
 
@@ -685,7 +685,7 @@ class Store:
         self.vault.update_file(target.path, rebuild)
 
 
-def _is_active(record: Record) -> bool:
+def is_active(record: Record) -> bool:
     return not record.meta.get("superseded_by") and record.meta.get("status") not in CLOSED_BY_SUPERSEDE.values()
 
 
