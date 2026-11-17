@@ -47,7 +47,7 @@ from agent_mem_vault.sanitize import (
     sanitize_tags,
     sanitize_text,
 )
-from agent_mem_vault.search import partial_score, partial_stems, query_stems, score
+from agent_mem_vault.search import partial_score, partial_stems, query_stems, score, similar_score
 from agent_mem_vault.vault import Issue, RevisionConflict, Vault, VaultError, log
 
 VISIBILITIES = ("public", "internal", "private")
@@ -55,6 +55,7 @@ VALIDITIES = ("valid", "rejected")
 LIFECYCLES = {"decision": ("accepted", "superseded"), "risk": ("open", "mitigated", "resolved")}
 CLOSED_BY_SUPERSEDE = {"decision": "superseded", "risk": "resolved"}
 MIN_ID_PREFIX = 8
+SIMILAR_LIMIT = 3
 _ID_PREFIX = re.compile(r"[0-9a-f-]+")
 CONSOLIDATION_AGE = timedelta(days=7)
 CONSOLIDATION_DUE = "Consolidation due: "
@@ -382,6 +383,21 @@ class Store:
         scored = [(partial_score(record, wanted, now), record) for record in records]
         ranked = sorted((pair for pair in scored if pair[0] is not None), key=lambda pair: -pair[0])
         return [record for _, record in ranked][: normalize_limit(limit)]
+
+    def similar_records(self, record: Record) -> list[Record]:
+        """Active records of the namespace about the same subject as `record`, best first, at most SIMILAR_LIMIT.
+
+        The record itself, private records, snapshots and receipts are left out.
+        """
+        wanted = partial_stems(" ".join([record.title, *record.aliases]))
+        now = self.clock()
+        scored = [
+            (similar_score(other, wanted, now), other)
+            for other in self._select(record.namespace, include_private=False, include_closed=False)
+            if other.id != record.id and other.kind not in ("snapshot", RECEIPT_KIND)
+        ]
+        ranked = sorted((pair for pair in scored if pair[0] is not None), key=lambda pair: -pair[0])
+        return [other for _, other in ranked][:SIMILAR_LIMIT]
 
     def get_project_brief(self, namespace: str | None = None, limit: float | None = None) -> Brief:
         """Companion cards, the latest snapshot, the active records created after it, and whether to consolidate.

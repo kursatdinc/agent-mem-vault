@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-11-17
+
+`save_memory` points at the records a new record may replace.
+
+### Added
+- `save_memory` still replies `Memory saved with ID: <id>` and, when active records of the namespace are
+  about the same subject, adds up to 3 of them below a line that names `update_memory` with `supersedes`.
+  A record is about the same subject when it holds at least three quarters of the words of the new title
+  and aliases, one of them in its own title (`Store.similar_records`). Private records, closed records,
+  snapshots, receipts and the new record itself are left out. Before, a duplicate was found only by a
+  search the agent had to remember to run first.
+
 ## [2.5.0] - 2026-11-15
 
 Closed records can leave the vault's working set without being deleted.

@@ -22,6 +22,9 @@ from agent_mem_vault.vault import RevisionConflict, VaultError
 
 ENGLISH = " Memory content is written in English."
 PARTIAL_MATCHES = "No record holds every word; closest partial matches:"
+SIMILAR_RECORDS = (
+    "Active records on a similar subject; if this one replaces one, call update_memory with its id in supersedes:"
+)
 
 Kind = Literal[*KINDS]
 Namespace = Annotated[
@@ -117,7 +120,11 @@ def create_server(store: Store) -> MCPServer:
         record = store.save_context(agent, title, content, namespace, tags)
         return f"Context saved with ID: {record.id}"
 
-    @tool("save_memory", "Save structured memory with a kind and optional workflow metadata.")
+    @tool(
+        "save_memory",
+        "Save structured memory with a kind and optional workflow metadata. The reply lists the active records "
+        "on a similar subject, if there are any, so a record that replaces one can be linked with supersedes.",
+    )
     def save_memory(
         agent: _text("agent", "Agent saving the memory"),
         kind: Annotated[Kind, Field(description="Structured memory kind")],
@@ -155,7 +162,10 @@ def create_server(store: Store) -> MCPServer:
             supersedes,
             aliases,
         )
-        return f"Memory saved with ID: {record.id}"
+        saved = f"Memory saved with ID: {record.id}"
+        if similar := store.similar_records(record):
+            return f"{saved}\n{SIMILAR_RECORDS}\n{format_records(similar, store.visibility_filter)}"
+        return saved
 
     @tool("read_latest_context", "Read the most recent saved context, optionally filtered by agent.")
     def read_latest_context(
