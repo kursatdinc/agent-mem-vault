@@ -64,7 +64,10 @@ Save a structured record.
 | `tags` | list of strings | no | |
 | `supersedes` | list of record ids | no | Records of the same namespace that this one replaces. Each is marked `superseded_by`; a superseded decision becomes `superseded` and a superseded risk `resolved`. Already-superseded records and receipts are refused. |
 
-Returns `Memory saved with ID: <id>`.
+Returns `Memory saved with ID: <id>`. When active records of the namespace are about the same subject (at
+least three quarters of the new title's and aliases' words, one of them in their own title), up to 3 of
+them follow on the next lines, so a record that replaces one can be linked with `update_memory` and
+`supersedes`. Private and closed records, snapshots and the new record itself are never listed.
 
 ### create_snapshot
 

@@ -181,6 +181,14 @@ agent-written: true
 - Decision: `aliases` (Obsidian's own property, so `[[alias]]` links resolve in Obsidian too) carry the
   other names the user uses for a subject, an acronym or an old product name. A lexical search misses
   those without embeddings; an alias hit ranks between a title hit and a content hit.
+- Decision: `save_memory` lists up to 3 active records of the namespace about the same subject below its
+  `Memory saved with ID:` line, so a record that replaces one is linked with `update_memory` and
+  `supersedes` while the agent still holds both. The list is advisory and comes after the write: a
+  refusal before it would break every caller that saves without looking, such as the weekly job. A record
+  counts when it holds at least three quarters of the words of the new title and aliases, one of them in
+  its own title. The half-of-the-words rule of the retry above listed something for 120 of 184 records on a
+  real vault, the three-quarters rule with a title hit for 22, and those were records of one subject (a
+  migration, a feature). Private records, closed records, snapshots and receipts are never listed.
 - Ordering for list operations: newest `created` first.
 - `search_memory` and `list_contexts` hide closed records unless `include_closed` is true
   (`--include-closed` on the CLI). Closed is the opposite of active in the brief: `superseded_by` is
@@ -199,7 +207,7 @@ The names, parameters and reply texts below are stable: agent instructions may d
 | Tool | Notes |
 |---|---|
 | `save_context` | kind `note` |
-| `save_memory` | kind, title, content, tags, aliases, status, relatedFiles, branch, commit, nextAction, + `supersedes` (ids) |
+| `save_memory` | kind, title, content, tags, aliases, status, relatedFiles, branch, commit, nextAction, + `supersedes` (ids); replies `Memory saved with ID: <id>`, then, if any, the similar active records (see *Reads*) |
 | `create_snapshot` | kind `snapshot`, + `supersedes` (ids); a superseded snapshot drops out of the brief |
 | `get_project_brief` | see *Brief* below |
 | `read_latest_context`, `list_contexts`, `search_memory` | filters: agent, tags, kind, limit, include_private; `list_contexts` and `search_memory` also include_closed |

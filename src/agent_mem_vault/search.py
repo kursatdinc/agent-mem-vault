@@ -14,6 +14,7 @@ _ALIAS_WEIGHT = 2
 _HALF_LIFE_DAYS = 30
 _AGE_FLOOR = 0.5
 _PARTIAL_SHARE = 0.5
+_SIMILAR_SHARE = 0.75
 _FILLER_WORDS = frozenset(
     "a an the and or of to in on for with is are was were be do does did why how what when which who we it this that "
     "vs from by at as if not no".split()
@@ -92,3 +93,18 @@ def partial_score(record: Record, wanted: frozenset[str], now: datetime) -> floa
     if len(matched) < max(1, math.ceil(len(wanted) * _PARTIAL_SHARE)):
         return None
     return hits * (len(matched) / len(wanted)) ** 2 * _age_weight(record.created, now)
+
+
+def similar_score(record: Record, wanted: frozenset[str], now: datetime) -> float | None:
+    """Rank a record that is about the same subject as a query, or return None.
+
+    The record must hold at least three quarters of the query stems and one of them in its title, so a record
+    that only mentions the words in its content does not count. The half-of-the-words rule of `partial_score`
+    is too loose for this: it matches most records of a vault.
+    """
+    if not wanted or not wanted & set(stems(record.title)):
+        return None
+    matched, _ = _match(record, wanted)
+    if len(matched) < _SIMILAR_SHARE * len(wanted):
+        return None
+    return partial_score(record, wanted, now)
