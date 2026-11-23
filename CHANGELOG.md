@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.6.1] - 2026-11-23
+
+The server answers its client again when `git` reads stdin.
+
+### Fixed
+- The server no longer misses the client's first message when `git` is a wrapper that reads stdin (one that
+  runs git over `ssh`, say): git now runs with stdin closed, so the `initialize` request stays on the wire
+  instead of the client timing out.
+
 ## [2.6.0] - 2026-11-17
 
 `save_memory` points at the records a new record may replace.
@@ -259,7 +268,9 @@ First stable release.
 - Release pipeline: pushing a `vX.Y.Z` tag builds the sdist and wheel, attaches them to a GitHub
   release, and publishes to PyPI through Trusted Publishing. See `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.6.1...HEAD
+[2.6.1]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.6.0...v2.6.1
+[2.6.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/kursatdinc/agent-mem-vault/compare/v2.2.0...v2.3.0

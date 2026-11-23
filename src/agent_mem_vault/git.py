@@ -27,6 +27,7 @@ def run_git(cwd: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> str:
         result = subprocess.run(
             ["git", *args],
             cwd=cwd,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=timeout,
