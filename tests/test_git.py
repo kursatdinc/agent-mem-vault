@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 import pytest
@@ -25,6 +26,30 @@ def repo(tmp_path):
 
 def committing_store(root):
     return Store(Vault(root), clock=TickingClock(), git_autocommit=True)
+
+
+def test_git_never_reads_the_stdin_the_mcp_client_writes_to(tmp_path, monkeypatch):
+    fake_git = tmp_path / "bin" / "git"
+    fake_git.parent.mkdir()
+    fake_git.write_text("#!/bin/sh\ncat\n")
+    fake_git.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{fake_git.parent}{os.pathsep}{os.environ['PATH']}")
+    message = b'{"jsonrpc": "2.0", "id": 1, "method": "initialize"}\n'
+    read_end, write_end = os.pipe()
+    os.write(write_end, message)
+    os.close(write_end)
+    saved_stdin = os.dup(0)
+    os.dup2(read_end, 0)
+    try:
+        echoed = git.run_git(tmp_path, "rev-parse")
+        left_for_server = os.read(0, len(message))
+    finally:
+        os.dup2(saved_stdin, 0)
+        os.close(saved_stdin)
+        os.close(read_end)
+
+    assert echoed == ""
+    assert left_for_server == message
 
 
 def test_each_write_commits_the_touched_paths_with_the_users_identity(repo):
